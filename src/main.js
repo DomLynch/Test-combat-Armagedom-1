@@ -1,9 +1,12 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-16';
-import { createCombatAudio } from './audio.js?v=combat-16';
-import { installTouchGuards } from './touch.js?v=combat-16';
-import { createInput, bindAction } from './input.js?v=combat-16';
+import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-17';
+import { createCombatAudio } from './audio.js?v=combat-17';
+import { installTouchGuards } from './touch.js?v=combat-17';
+import { createInput, bindAction } from './input.js?v=combat-17';
 
+import { ImpactFeedback, HitReaction } from './impact.js?v=combat-17';
+
+const effects = new ImpactFeedback(matchMedia('(prefers-reduced-motion: reduce)').matches ? 'low' : 'high');
 const $ = id => document.getElementById(id);
 const canvas = $('game');
 installTouchGuards();
@@ -24,7 +27,12 @@ function updateCamera(dt, immediate = false) {
   cameraFocus.x += (player.position.x - cameraFocus.x) * alpha;
   cameraFocus.z += (player.position.z - cameraFocus.z) * alpha;
   camera.position.copy(cameraFocus).add(cameraOffset);
-  camera.lookAt(cameraFocus); camera.updateMatrixWorld(true);
+  camera.lookAt(cameraFocus);
+  // Translate the view only, in CSS-pixel scale; never move HUD controls or logical aim.
+  const pixelsToWorld = (camera.top - camera.bottom) / Math.max(1, innerHeight);
+  camera.position.x += effects.cameraX * effects.cameraWave * pixelsToWorld;
+  camera.position.z += effects.cameraZ * effects.cameraWave * pixelsToWorld;
+  camera.updateMatrixWorld(true);
 }
 scene.add(new THREE.HemisphereLight('#d5e8ff', '#776e59', 2));
 const sun = new THREE.DirectionalLight('#ffe0b4', 2.4); sun.position.set(-10, 22, 8); sun.castShadow = true;
@@ -65,9 +73,13 @@ box(torso, '#e4b99b', -0.1, 1.22, -0.43, 0.37, 0.14, 0.17);
 box(torso, '#e4b99b', 0.28, 1.22, -0.49, 0.15, 0.14, 0.19);
 const gun = new THREE.Group(); torso.add(gun);
 const barrel = box(gun, '#202b33', 0.25, 1.25, -0.76, 0.17, 0.16, 0.95);
+const slide = box(gun, '#7f929c', 0.25, 1.37, -0.55, 0.22, 0.08, 0.38); slide.visible = false;
 box(gun, '#51616c', 0.25, 1.25, -0.46, 0.23, 0.2, 0.35);
 box(gun, '#202b33', 0.25, 1.08, -0.46, 0.13, 0.23, 0.16);
 const flash = box(gun, '#fff1b5', 0.25, 1.25, -1.32, 0.25, 0.22, 0.27); flash.material = new THREE.MeshBasicMaterial({ color: '#fff1b5' }); flash.castShadow = false; flash.visible = false;
+const gunRest = new THREE.Vector3(0.25, 1.2, -0.46);
+for (const mesh of gun.children) mesh.position.sub(gunRest); gun.position.copy(gunRest);
+const slideRestZ = slide.position.z;
 const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.52, 16), new THREE.MeshBasicMaterial({ color: '#26343c', transparent: true, opacity: 0.28, depthWrite: false })); shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.025; player.add(shadow);
 const reticle = new THREE.Group(); scene.add(reticle);
 const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.24, 20), new THREE.MeshBasicMaterial({ color: '#a9f9d0', side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; reticle.add(ring);
@@ -81,17 +93,52 @@ const targets = targetPositions.map(([x, z], i) => {
   const bodyMaterial = new THREE.MeshLambertMaterial({ color: '#d98e7d' });
   box(group, '#354654', 0, 0.08, 0, 1.1, 0.16, 1.1);
   box(group, '#596b76', 0, 0.43, 0, 0.2, 0.6, 0.2);
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.42, 0.95, 12), bodyMaterial); body.position.y = 1.12; body.castShadow = true; group.add(body);
-  box(group, '#ffe2cf', 0, 1.72, 0, 0.4, 0.35, 0.4);
+  const reaction = new HitReaction(), pivot = new THREE.Group(); pivot.position.y = 0.78; group.add(pivot);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.42, 0.95, 12), bodyMaterial); body.position.y = 0.34; body.castShadow = true; pivot.add(body);
+  box(pivot, '#ffe2cf', 0, 0.94, 0, 0.4, 0.35, 0.4);
   const health = box(group, '#a9f9d0', 0, 2.12, 0, 1, 0.065, 0.07); health.rotation.y = cameraYaw; health.castShadow = false;
-  return { group, bodyMaterial, health, x, z, baseX: x, baseZ: z, hp: 100, down: 0, flash: 0, moving: i === 6 };
+  return { group, pivot, reaction, bodyMaterial, health, x, z, baseX: x, baseZ: z, hp: 100, down: 0, flash: 0, moving: i === 6 };
 });
 const tracers = Array.from({ length: 16 }, () => {
   const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
   const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#ffe3a2' })); line.visible = false; scene.add(line);
   return { line, remaining: 0 };
 });
-let tracerIndex = 0, started = true, angle = 0, aimX = 0, aimZ = -1, kick = 0, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
+// One instanced draw and a fixed pool; no particle allocation on impact.
+const particleMesh = new THREE.InstancedMesh(unitBox, new THREE.MeshBasicMaterial({ color: '#ffffff' }), 48);
+particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); particleMesh.frustumCulled = false; particleMesh.visible = false; scene.add(particleMesh);
+const particlePose = new THREE.Object3D(), particleColor = new THREE.Color();
+const particles = Array.from({ length: 48 }, () => ({ life: 0, total: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, size: 0 }));
+let particleIndex = 0, activeParticles = 0;
+function burst(x, z, dx, dz, killed) {
+  if (effects.level === 'off') return;
+  const count = effects.level === 'low' ? 3 : killed ? 12 : 8;
+  for (let i = 0; i < count; i++) {
+    const p = particles[particleIndex++ % particles.length], a = i / count * Math.PI * 2;
+    p.life = p.total = killed ? 0.32 : 0.22; p.x = x; p.y = 1.25; p.z = z;
+    p.vx = Math.cos(a) * 1.8 + dx; p.vz = Math.sin(a) * 1.8 + dz; p.vy = 1.3 + (i % 3) * 0.7; p.size = killed ? 0.08 : 0.055;
+  }
+}
+function tickParticles(dt) {
+  activeParticles = 0;
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i]; p.life = Math.max(0, p.life - dt);
+    if (p.life > 0) {
+      activeParticles++; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vy -= dt * 8;
+      particlePose.position.set(p.x, p.y, p.z); particlePose.scale.setScalar(p.size * p.life / p.total);
+      particleColor.set('#ffca85').multiplyScalar(0.6 + 0.4 * p.life / p.total); particleMesh.setColorAt(i, particleColor);
+    } else particlePose.scale.setScalar(0);
+    particlePose.updateMatrix(); particleMesh.setMatrixAt(i, particlePose.matrix);
+  }
+  particleMesh.visible = activeParticles > 0; particleMesh.instanceMatrix.needsUpdate = true;
+  if (particleMesh.instanceColor) particleMesh.instanceColor.needsUpdate = true;
+}
+function clearEffects() {
+  effects.reset(); gun.position.copy(gunRest); gun.rotation.x = 0; slide.position.z = slideRestZ;
+  for (const t of targets) { t.reaction.reset(); t.pivot.rotation.set(0, 0, 0); t.pivot.position.set(0, 0.78, 0); }
+  for (const p of particles) p.life = 0; activeParticles = 0; particleMesh.visible = false;
+}
+let tracerIndex = 0, started = true, angle = 0, aimX = 0, aimZ = -1, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
 const aimOffset = new THREE.Vector2(0, -5);
 const audio = createCombatAudio();
 let targetIndex = -1, lastHitX = 0, lastHitZ = 0;
@@ -105,20 +152,26 @@ function reload() {
   showFeedback(result === 'full' ? 'MAGAZINE FULL' : result === 'busy' ? 'RELOADING…' : 'RELOAD STARTED');
   updateHud();
 }
-function swap() { if (!started) return; weapons.swap(); barrel.scale.z = weapons.index ? 0.5 : 0.95; barrel.position.z = weapons.index ? -0.6 : -0.76; }
+function swap() { if (!started) return; weapons.swap(); clearEffects(); updateWeaponModel(); }
+function updateWeaponModel() { barrel.scale.z = weapons.index ? 0.5 : 0.95; barrel.position.z = (weapons.index ? -0.6 : -0.76) - gunRest.z; slide.visible = weapons.index === 1; flash.position.z = (weapons.index ? -0.96 : -1.32) - gunRest.z; }
 const input = createInput(canvas, reload, swap);
 bindAction($('reload'), reload); bindAction($('swap'), swap);
 $('assist').onclick = () => { assistEnabled = !assistEnabled; stickyAim.reset(); $('assist').textContent = assistEnabled ? 'Assist: +50%' : 'Assist: OFF'; $('assist').setAttribute('aria-pressed', String(assistEnabled)); };
 $('sound').onclick = () => { soundEnabled = !soundEnabled; audio.setEnabled(soundEnabled); $('sound').textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`; $('sound').setAttribute('aria-pressed', String(soundEnabled)); };
+function updateEffectsButton() { $('effects').textContent = `FX: ${effects.level === 'high' ? 'High' : effects.level === 'low' ? 'Low' : 'Off'}`; $('effects').setAttribute('aria-label', `Impact effects ${effects.level}. Tap to change.`); }
+$('effects').onclick = () => { const next = { high: 'low', low: 'off', off: 'high' }[effects.level]; effects.setLevel(next); clearEffects(); updateEffectsButton(); };
+updateEffectsButton();
+window.addEventListener('blur', clearEffects); document.addEventListener('visibilitychange', () => { if (document.hidden) clearEffects(); });
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
-  input.clear(); stickyAim.reset(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; previousMoveAngle = steeringAngle = null; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
-  barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
+  input.clear(); stickyAim.reset(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; previousMoveAngle = steeringAngle = null; movementFacing = false; player.rotation.y = 0; flashTime = hitMarkerTime = 0; clearEffects();
+  updateWeaponModel(); for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
   for (const t of tracers) { t.remaining = 0; t.line.visible = false; } updateCamera(0, true); showFeedback('Range reset');
 };
 player.position.z = 3;
 function showFeedback(message) { $('feedback').textContent = message; feedbackTime = 0.7; }
 function resize() {
+  clearEffects();
   const width = innerWidth, height = innerHeight, aspect = width / height;
   const halfHeight = aspect > 1 ? 8 : 11;
   camera.left = -halfHeight * aspect; camera.right = halfHeight * aspect; camera.top = halfHeight; camera.bottom = -halfHeight; camera.updateProjectionMatrix();
@@ -132,11 +185,11 @@ function setLine(line, x1, y1, z1, x2, y2, z2) {
 }
 function shoot(moving) {
   if (!weapons.fire()) return;
-  shots++; audio.shot(weapons.index === 1); kick = weapons.weapon.kick; flashTime = 0.045;
+  shots++; audio.shot(weapons.index === 1); effects.shot(weapons.index === 1, aimX, aimZ); flashTime = 0.045;
   const spread = weapons.weapon.spread * (input.focus ? 0.25 : 1) * (moving ? 2 : 1);
   const direction = Math.atan2(aimX, aimZ) + (Math.random() - 0.5) * spread * 2;
   const dx = Math.sin(direction), dz = Math.cos(direction);
-  muzzle.set(0.25, 1.25, weapons.index ? -0.95 : -1.25); torso.localToWorld(muzzle);
+  muzzle.set(0, 0.05, (weapons.index ? -0.95 : -1.25) - gunRest.z); gun.localToWorld(muzzle);
   let distance = 32, hitTarget = null;
   for (const target of targets) {
     if (target.hp <= 0) continue;
@@ -153,7 +206,8 @@ function shoot(moving) {
     if (!hitTarget.hp) { kills++; hitTarget.down = 2; showFeedback('TARGET DOWN'); }
     lastHitX = hitTarget.x; lastHitZ = hitTarget.z;
     hitMarkerTime = 0.2; $('hit-marker').classList.toggle('kill', !hitTarget.hp); audio.hit(!hitTarget.hp);
-    if (navigator.vibrate) navigator.vibrate(8);
+    effects.hit(!hitTarget.hp, dx, dz); hitTarget.reaction.hit(dx, dz, !hitTarget.hp, effects.level);
+    burst(player.position.x + dx * distance, player.position.z + dz * distance, dx, dz, !hitTarget.hp);
   }
   const tracer = tracers[tracerIndex++ % tracers.length]; tracer.remaining = 0.065; tracer.line.visible = true;
   // Close impacts lie before the barrel; keep their tracer on the hit segment.
@@ -176,11 +230,12 @@ renderer.setAnimationLoop(time => {
   const dt = previousTime ? Math.min((time - previousTime) / 1000, 0.05) : 0; previousTime = time;
   if (started && !document.hidden) {
     const wasReloading = weapons.reloadRemaining > 0;
-    elapsed += dt; weapons.tick(dt);
+    elapsed += dt; weapons.tick(dt); effects.tick(dt);
     if (wasReloading && !weapons.reloadRemaining) { showFeedback('RELOADED'); updateHud(); }
     // Update opponent positions before aiming so marker and model share this frame.
     for (const target of targets) {
-      if (target.down > 0) { target.down -= dt; target.group.visible = false; if (target.down <= 0) { target.hp = 100; target.group.visible = true; } }
+      if (target.down > 0) { target.down -= dt; if (target.down <= 0) { target.hp = 100; target.reaction.reset(); } }
+      target.reaction.tick(dt); target.group.visible = target.hp > 0 || target.reaction.energy > 0.08;
       if (target.moving) target.x = target.baseX + Math.sin(elapsed * 0.9) * 2;
       target.group.position.x = target.x;
     }
@@ -228,10 +283,13 @@ renderer.setAnimationLoop(time => {
     }
     // One root yaw keeps feet, hips, torso and gun together, including while strafing.
     player.rotation.y = angle;
-    kick *= Math.exp(-dt * 22); gun.position.z = kick;
+
     player.updateMatrixWorld(true);
     if (input.fires.size || input.firePressed) shoot(moving);
     input.firePressed = false;
+    gun.position.copy(gunRest); gun.position.z += effects.recoil * (weapons.index ? 0.32 : 0.2);
+    gun.rotation.x = effects.recoil * (weapons.index ? 0.12 : 0.06); slide.position.z = slideRestZ + effects.slide * 0.16;
+    updateCamera(0); tickParticles(dt);
     flashTime = Math.max(0, flashTime - dt); flash.visible = flashTime > 0;
     const wallX = aimX ? ((aimX > 0 ? 14 : -14) - player.position.x) / aimX : Infinity;
     const wallZ = aimZ ? ((aimZ > 0 ? 14 : -14) - player.position.z) / aimZ : Infinity;
@@ -256,6 +314,9 @@ renderer.setAnimationLoop(time => {
     for (const target of targets) {
       target.flash = Math.max(0, target.flash - dt);
       target.bodyMaterial.color.set(target.flash ? '#fff3dd' : '#d98e7d'); target.health.scale.x = target.hp / 100;
+      const reaction = target.reaction, lean = reaction.energy * (reaction.killed ? 0.5 : 0.22);
+      target.pivot.rotation.set(reaction.z * lean, 0, -reaction.x * lean);
+      target.pivot.position.set(reaction.x * reaction.energy * 0.09, 0.78 - (reaction.killed ? (1 - reaction.energy) * 0.5 : 0), reaction.z * reaction.energy * 0.09);
     }
     for (const tracer of tracers) { tracer.remaining = Math.max(0, tracer.remaining - dt); tracer.line.visible = tracer.remaining > 0; }
     feedbackTime = Math.max(0, feedbackTime - dt); if (!feedbackTime) $('feedback').textContent = '';
@@ -264,15 +325,15 @@ renderer.setAnimationLoop(time => {
   renderer.render(scene, camera);
 });
 updateHud();
-canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); input.clear(); started = false; showFeedback('Graphics paused. Reload this page to resume.'); });
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); input.clear(); clearEffects(); started = false; showFeedback('Graphics paused. Reload this page to resume.'); });
 // Read-only diagnostics used by real browser checks; no test input bypass.
 window.__combat = {
   snapshot() {
     const worldYaw = group => { const direction = group.getWorldDirection(new THREE.Vector3()); return Math.atan2(direction.x, direction.z); };
     const playerScreen = new THREE.Vector3(player.position.x, 1, player.position.z).project(camera);
-    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, moveHeld: input.moveHeld, controls: 'left-move-aim-fire-button', movementFacing, selectedTarget: targetIndex < 0 ? null : targetIndex, reticle: { x: reticle.position.x, z: reticle.position.z }, targetMarker: !$('target-marker').classList.contains('hidden'), assistEnabled, assistCorrection, assistTarget: stickyAim.target < 0 ? null : stickyAim.target, audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
-      targets: targets.map(t => { const v = new THREE.Vector3(t.x, 1.25, t.z).project(camera); return { x: t.x, z: t.z, hp: t.hp, screenX: (v.x + 1) / 2 * innerWidth, screenY: (1 - v.y) / 2 * innerHeight }; }) };
+    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, moveHeld: input.moveHeld, controls: 'left-move-aim-fire-button', movementFacing, selectedTarget: targetIndex < 0 ? null : targetIndex, reticle: { x: reticle.position.x, z: reticle.position.z }, targetMarker: !$('target-marker').classList.contains('hidden'), assistEnabled, assistCorrection, assistTarget: stickyAim.target < 0 ? null : stickyAim.target, audio: audio.snapshot(), effects: { level: effects.level, recoil: effects.recoil, slide: effects.slide, hold: effects.hold, lastHold: effects.lastHold, cameraAmplitude: Math.hypot(effects.cameraX, effects.cameraZ), activeParticles, particleCapacity: particles.length }, hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
+      targets: targets.map(t => { const v = new THREE.Vector3(t.x, 1.25, t.z).project(camera); return { x: t.x, z: t.z, hp: t.hp, reaction: t.reaction.energy, reactionHold: t.reaction.hold, visible: t.group.visible, screenX: (v.x + 1) / 2 * innerWidth, screenY: (1 - v.y) / 2 * innerHeight }; }) };
   }
 };
-window.addEventListener('pagehide', () => { input.clear(); renderer.setAnimationLoop(null); });
+window.addEventListener('pagehide', () => { input.clear(); clearEffects(); renderer.setAnimationLoop(null); });
 window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });

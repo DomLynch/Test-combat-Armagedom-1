@@ -4,13 +4,14 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-16)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-17)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
 - Walking retains its original speed, 13% neutral zone and linear radial stick response. A short angular turn filter softens sudden direction/aim changes without reducing walking speed; releasing the stick still stops travel immediately. It moves and faces the whole body through 360°. Its direction acquires assisted nearby opponents; small direction changes retain them, while a deliberate turn releases them. Stopping keeps the last facing.
 - Hold the right **FIRE** button to shoot. Dragging it never changes movement or aim. Right-side canvas touches have no targeting role, leaving that area available for future action buttons.
 - The targeting ring and arrow sit on the first living opponent in the actual line of fire, follow its movement and release when it leaves that line or dies. Aim correction remains light; this selection does not auto-fire or hard-lock the gun.
+- Universal impact feedback adds weapon kick, animated pistol slide, victim flinch, pooled hit particles, a short visual hold (rifle40ms/pistol50ms/kill80ms), bounded camera impulses and layered shot/impact/kill audio. Movement, aim, damage, fire cadence and reload timers keep running. FX: High/Low/Off controls motion; Low starts automatically for reduced-motion preference. Controls stay stationary. No platform-specific vibration.
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
 - Left-stick movement alone never fires. Feet, hips, torso and gun share one smoothed heading. Shots follow the visible gun direction. The isometric camera keeps its fixed angle and follows the player.
 - RIFLE/PISTOL switches weapon; RELOAD responds on contact and refills with unlimited reserve. Repeated taps retain reload progress; a full magazine gives explicit feedback.

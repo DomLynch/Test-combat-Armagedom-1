@@ -1,3 +1,4 @@
+import { ImpactFeedback, HitReaction } from '../src/impact.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stickVector, worldVector, turnAim, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle, WeaponState } from '../src/combat.js';
@@ -129,4 +130,33 @@ test('gentle steering absorbs brief target wobble while a sustained deliberate t
   a.update(4*rad+pulse,0,0,targets,true); assert.equal(a.target,0);
   const deliberate=followAngle(0,12*rad,0.5,10);
   a.update(4*rad+deliberate,0,0,targets,true); assert.equal(a.target,-1);
+});
+
+
+test('visual hit-stop holds recoil only and consumes the exact remaining time', () => {
+  const a = new ImpactFeedback(); a.shot(true, 0, -1); a.hit(false, 0, -1);
+  assert.equal(a.hold, 0.05); a.tick(0.025);
+  assert.equal(a.recoil, 1); assert.equal(a.slide, 1); assert.equal(a.hold, 0.025);
+  a.tick(0.075); assert.equal(a.hold, 0);
+  assert.ok(Math.abs(a.recoil - Math.exp(-0.05 * 20)) < 1e-9);
+  const b = new ImpactFeedback(); b.shot(true,0,-1); b.hit(false,0,-1); for(let i=0;i<20;i++)b.tick(0.005);
+  assert.ok(Math.abs(a.recoil-b.recoil)<1e-9, 'presentation timing is independent of frame slicing');
+  a.hit(true,0,-1); assert.equal(a.hold,0.08);
+});
+test('rapid-fire camera impulses stay bounded and settle exactly to rest', () => {
+  const a = new ImpactFeedback();
+  for(let i=0;i<100;i++){a.shot(false,1,0);a.hit(true,1,0);a.tick(0.01);assert.ok(Math.hypot(a.cameraX,a.cameraZ)<=4);}
+  a.tick(1);assert.equal(a.cameraX,0);assert.equal(a.cameraZ,0);assert.equal(a.recoil,0);
+});
+test('low/off effects remove camera shake and visual pauses; reset clears residual feedback', () => {
+  const a = new ImpactFeedback(); a.shot(true,1,0);a.hit(true,1,0);
+  a.setLevel('low');a.shot(true,1,0);a.hit(true,1,0);
+  assert.equal(a.recoil,0.4);assert.equal(a.hold,0);assert.equal(a.cameraX,0);
+  a.setLevel('off');a.shot(true,1,0);a.hit(true,1,0);assert.equal(a.recoil,0);assert.equal(a.slide,0);
+  a.setLevel('high');a.shot(true,1,0);a.reset();assert.equal(a.recoil+a.slide+a.hold+a.cameraX+a.cameraZ,0);
+});
+test('victim flinch has a local hold and stronger kill reaction without moving collision state', () => {
+  const a = new HitReaction();a.hit(0,-1,false,'high');a.tick(0.03);assert.equal(a.energy,1);assert.ok(a.hold>0);
+  a.tick(0.03);assert.ok(a.energy<1);a.hit(1,0,true,'high');assert.equal(a.hold,0.08);assert.equal(a.killed,true);
+  a.hit(1,0,false,'off');assert.equal(a.energy,0);assert.equal(a.hold,0);a.reset();assert.equal(a.energy,0);
 });

@@ -9,7 +9,7 @@ let browser;
 const results=[];
 try {
   browser=await chromium.launch({...(process.env.CHROMIUM_PATH ? {executablePath:process.env.CHROMIUM_PATH}:{}),headless:true,args:['--no-sandbox','--enable-webgl','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-  const context=await browser.newContext({viewport:{width:844,height:390},hasTouch:true,isMobile:true,deviceScaleFactor:1});
+  const context=await browser.newContext({viewport:{width:844,height:390},hasTouch:true,isMobile:true,deviceScaleFactor:1,...(process.env.CAPTURE_VIDEO ? {recordVideo:{dir:'artifacts/video',size:{width:844,height:390}}}:{})});
   const page=await context.newPage(), errors=[];
   page.on('pageerror',e=>errors.push(e.message)); page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:4187',{waitUntil:'networkidle'});
@@ -149,8 +149,36 @@ try {
   await touch('touchStart',[[1,move.x+20,move.y],[2,fire.x,fire.y]]);await advance(0.08);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(150);after=await snapshot();assert.equal(after.moveHeld,false);assert.equal(after.fireCount,0);assert.equal(after.assistTarget,null);
   b=await page.locator('#game').boundingBox();assert.equal(b.width,390);assert.equal(b.height,844);
-  for(const id of ['#move','#fire-right','#reload','#swap','#sound','#assist']){const q=await page.locator(id).boundingBox();assert.ok(q.x>=0&&q.y>=0&&q.x+q.width<=391&&q.y+q.height<=845,id+' fits portrait');}
+  for(const id of ['#move','#fire-right','#reload','#swap','#sound','#assist','#effects']){const q=await page.locator(id).boundingBox();assert.ok(q.x>=0&&q.y>=0&&q.x+q.width<=391&&q.y+q.height<=845,id+' fits portrait');}
   await page.screenshot({path:'artifacts/portrait.png'});await page.setViewportSize({width:844,height:390});await page.screenshot({path:'artifacts/landscape.png'});
+  // Observe real rendered feedback during a fresh two-finger fight.
+  await reset();await walkTo(0,-7.4);await page.locator('#swap').click();await advance(0.08);
+  const fixedHud=await page.locator('#fire-right').boundingBox();
+  await page.evaluate(()=>{
+    window.__impactSamples=[];
+    window.__impactObserver=()=>{const s=window.__combat.snapshot();window.__impactSamples.push({time:s.simTime,z:s.z,shots:s.shots,hits:s.hits,hp:s.targets[0].hp,visible:s.targets[0].visible,reaction:s.targets[0].reaction,hold:s.effects.hold,lastHold:s.effects.lastHold,recoil:s.effects.recoil,slide:s.effects.slide,camera:s.effects.cameraAmplitude,particles:s.effects.activeParticles,voices:s.audio.voices});window.__impactRAF=requestAnimationFrame(window.__impactObserver);};
+    window.__impactRAF=requestAnimationFrame(window.__impactObserver);
+  });
+  await touch('touchStart',[[2,fire.x,fire.y]]);await advance(0.9);await touch('touchEnd',[]);
+  const samples=await page.evaluate(()=>{cancelAnimationFrame(window.__impactRAF);return window.__impactSamples;});
+  assert.ok(samples.some(s=>s.recoil>0.5&&s.slide>0.5),'pistol has visible recoil and moving slide');
+  assert.ok(samples.some(s=>s.hold>0&&s.lastHold===0.05&&s.particles>0&&s.reaction>0),'hit has local presentation hold/flinch/burst');
+  assert.ok(samples.some(s=>s.hp===0&&s.visible&&s.lastHold===0.08),'kill reaction remains visible briefly before disappearance');
+  assert.ok(samples.some(s=>s.camera>0));assert.ok(samples.every(s=>s.camera<=4&&s.particles<=48&&s.voices<=16));
+  assert.ok(samples.at(-1).shots>=3,'visual stop never stalls pistol firing cadence');
+  assert.deepEqual(await page.locator('#fire-right').boundingBox(),fixedHud,'camera impulses never displace touch controls');
+  await page.screenshot({path:'artifacts/impact-pistol.png'});
+  await page.locator('#effects').click();assert.equal((await snapshot()).effects.level,'low');await reset();
+  await touch('touchStart',[[2,fire.x,fire.y]]);await advance(0.12);after=await snapshot();assert.equal(after.effects.cameraAmplitude,0);assert.equal(after.effects.hold,0);await touch('touchEnd',[]);
+  await page.locator('#effects').click();assert.equal((await snapshot()).effects.level,'off');await reset();await touch('touchStart',[[2,fire.x,fire.y]]);await advance(0.12);after=await snapshot();assert.equal(after.effects.recoil,0);assert.equal(after.effects.cameraAmplitude,0);assert.equal(after.effects.activeParticles,0);await touch('touchEnd',[]);
+  await page.locator('#effects').click();assert.equal((await snapshot()).effects.level,'high');await reset();await walkTo(0,-7.4);
+  await touch('touchStart',[[1,move.x,move.y]]);await steer(Math.PI,0.08);before=await snapshot();await touch('touchStart',[left,[2,fire.x,fire.y]]);await advance(0.45);after=await snapshot();
+  assert.ok(after.hits>before.hits&&after.shots-before.shots>=4);assert.ok(before.z-after.z>0.1,'movement advances through repeated impact holds');aligned(after);
+  await touch('touchEnd',[]);await advance(0.45);after=await snapshot();assert.equal(after.effects.cameraAmplitude,0);assert.equal(after.effects.recoil,0);assert.equal(after.effects.activeParticles,0);
+  await page.screenshot({path:'artifacts/impact-rifle.png'});await reset();after=await snapshot();assert.equal(after.effects.cameraAmplitude,0);assert.equal(after.effects.slide,0);
+  results.push('Universal impact: recoil/pistol slide, local hit/kill stop, victim flinch/burst, bounded camera/audio/pool; High/Low/Off and reset; movement/fire continue during hits');
+  const reducedContext=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'}), reducedPage=await reducedContext.newPage();
+  await reducedPage.goto(process.env.TEST_URL||'http://127.0.0.1:4187');await reducedPage.waitForFunction(()=>window.__combat?.snapshot().started);assert.equal(await reducedPage.evaluate(()=>window.__combat.snapshot().effects.level),'low');await reducedContext.close();
   assert.deepEqual(errors,[]);results.push('Resize cancels held controls; landscape/portrait HUD fits with no runtime/console errors');
-  await writeFile('artifacts/browser-result.json',JSON.stringify({pass:true,results,snapshot:await snapshot()},null,2));console.log(JSON.stringify({pass:true,results},null,2));
+  await writeFile('artifacts/browser-result.json',JSON.stringify({pass:true,results,snapshot:await snapshot()},null,2));console.log(JSON.stringify({pass:true,results},null,2));await context.close();
 } finally {if(browser)await browser.close();server.kill();}
