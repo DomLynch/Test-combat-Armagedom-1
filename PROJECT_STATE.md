@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — opponent markers / Safari gesture guards 09, 2026-10-05
+## Current — light assist +10% 10, 2026-10-05
+
+Live https://degree-choice.com/?v=combat-10 . Runtime source `6e2f7fb5`, release `combat-10-6e2f7fb5-3e5dac`. Owner requested a slight increase for easier pistol/rifle targeting. Shared touch-assist correction coefficient rises from0.25 to0.275 (+10%); close-range maximum is1.65° rather than1.5°. Same6° acquisition cone, falloff to zero at6 arena units, dead/behind filtering, non-accumulating manual heading, OFF switch and movement-facing precedence retained. No hard target lock added. Opponent markers and Safari guards unchanged apart from module cache version/header10.
+
+Evidence: ten logic tests plus local browser `test-combat-armagedom-1-8e2249b7d13f` exit0; public browser `test-combat-armagedom-1-beb4db468707` exit0. New assertions measure the stronger correction on both actual rifle and pistol snapshots, OFF removal, unchanged range/cone boundaries. Previous real touch/movement/full-body/fire/reload/target/gesture/audio/viewport checks pass with zero errors. Eleven served runtime SHA/no-store checks and tested source digests match the release. Initial job `test-combat-armagedom-1-f92448d7b171` exit1: added exact-zero range-boundary assertion saw8.5e-18 from trigonometric floating-point distance; test now allows1e-12 there. No runtime fix for that numeric fixture. Receipts/captures under ignored `artifacts/combat-10/`; no new video. Phone aiming preference and native Safari zoom acceptance remain owner device checks.
+
+Only prototype symlink swapped; no nginx config write/reload. Protected main config/snippet and pinned033 main page matched before/after; main ARMAGEDOM source/assets/operations untouched by this lane. Rollback `/var/backups/test-combat-armagedom-1/combat-10-6e2f7fb5-3e5dac/`; combat9 preserved. Next: owner phone comparison of pistol/rifle Assist: Light and OFF.
+
+## Previous — opponent markers / Safari gesture guards 09, 2026-10-05
 
 Live https://degree-choice.com/?v=combat-9 . Runtime source `feb021377fd6e28e32f055095cb82299343d3f18`, release `combat-9-feb02137-8c8eac`. Arrow and aim ring now sit on the first live opponent intersected by the actual gun ray, within the arena wall. They follow its current position and clear on death or turning away. This changes targeting feedback without adding hard lock-on or widening the existing light assist. Hit feedback stays at the actual impact. Movement-driven whole-body facing and previous controls retained.
 
