@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — gentler stick movement / turning 14, 2026-10-05
+## Current — original walking speed, smooth turns 15, 2026-10-05
+
+Live https://degree-choice.com/?v=combat-15 . Runtime source `b6b71012fe4b7b2ce8ff91267ec7599c37e56528`, release `combat-15-b6b71012-fde304`. Owner clarified that walking speed was already right; sensitivity meant turning/look direction. Restored the combat13 walking response: 6 arena units/sec at full stick, 13% neutral zone and linear radial strength. Retained rate10 shortest-arc angular steering to soften brief flicks and direction/aim changes while keeping full 360° travel. Release stops immediately; existing body/gun alignment, desktop controls, assist gain0.3575/acquire6°/release9°/range6 and FIRE-only retained.
+
+Evidence: thirteen unit tests passed in the TAP portion of `test-combat-armagedom-1-a2ef1a94487f`; unchanged logic/test hashes verified against final source. Its browser portion and diagnostic `test-combat-armagedom-1-b63caf8c3259` failed because the real-time retention fixture walked almost past the dummy at restored speed during screenshots/settings. Bounded that fixture's starting distance and thumb deflection without changing runtime. Final local browser `test-combat-armagedom-1-23e96af1d803` exit0; public browser `test-combat-armagedom-1-09a57a5072ac` exit0. Same physical20px drag matches original walking speed; full stick measures6 units/sec; eased turns, intermediate/full-circle body alignment, retained targets/deliberate release/OFF/cancel, held FIRE, rifle/pistol hits/reload/quick taps, guard/audio/layout checks pass with zero errors. Eleven served SHA/no-store checks and final browser/runtime input hashes match. Receipts/captures `artifacts/combat-15/`; screenshot reviewed, no new video. Physical thumb comfort/native Safari zoom remain owner device acceptance.
+
+Only prototype symlink swapped; no nginx write/reload. Protected main config/snippet and pinned page `https://playarmagedom.com/armagedom/preview/three-20261005-036/` matched before/after. Main ARMAGEDOM source/assets/operations untouched by this lane. Rollback `/var/backups/test-combat-armagedom-1/combat-15-b6b71012-fde304/`; combat14 preserved. Next: owner phone check of original walking pace and gentler left-thumb turning with FIRE held.
+
+## Previous — gentler stick movement / turning 14, 2026-10-05
 
 Live https://degree-choice.com/?v=combat-14 . Runtime source `733bdd56164bd50bd66ad4e4f3cdde8a5371cef4`, release `combat-14-733bdd56-219914`. Owner reported fast/sensitive walking and flicking out of assisted opponents. Mobile full-stick walking lowered25% from6 to4.5 arena units/sec; default radial neutral zone widened13%→16%, normalized radial response now power1.25 for finer light travel. Shortest-arc time-based steering filter rate10 smooths changes in both travel direction and left targeting; first direction is initialized from the actual stick. Release stops travel immediately (no movement inertia). Existing body/gun smoothing and alignment retained; desktop keyboard speed remains6. Assist gain0.3575/acquire6°/release9°/range6 and FIRE-only semantics retained.
 
