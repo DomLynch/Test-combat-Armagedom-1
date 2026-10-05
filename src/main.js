@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-13';
-import { createCombatAudio } from './audio.js?v=combat-13';
-import { installTouchGuards } from './touch.js?v=combat-13';
-import { createInput, bindAction } from './input.js?v=combat-13';
+import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-14';
+import { createCombatAudio } from './audio.js?v=combat-14';
+import { installTouchGuards } from './touch.js?v=combat-14';
+import { createInput, bindAction } from './input.js?v=combat-14';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -96,7 +96,7 @@ const aimOffset = new THREE.Vector2(0, -5);
 const audio = createCombatAudio();
 let targetIndex = -1, lastHitX = 0, lastHitZ = 0;
 const stickyAim = new StickyAim();
-let assistEnabled = true, assistCorrection = 0, previousMoveAngle = null, movementFacing = false;
+let assistEnabled = true, assistCorrection = 0, previousMoveAngle = null, steeringAngle = null, movementFacing = false;
 let soundEnabled = true, hitMarkerTime = 0;
 const weapons = new WeaponState();
 function reload() {
@@ -112,7 +112,7 @@ $('assist').onclick = () => { assistEnabled = !assistEnabled; stickyAim.reset();
 $('sound').onclick = () => { soundEnabled = !soundEnabled; audio.setEnabled(soundEnabled); $('sound').textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`; $('sound').setAttribute('aria-pressed', String(soundEnabled)); };
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
-  input.clear(); stickyAim.reset(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; previousMoveAngle = null; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
+  input.clear(); stickyAim.reset(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; previousMoveAngle = steeringAngle = null; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
   barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
   for (const t of tracers) { t.remaining = 0; t.line.visible = false; } updateCamera(0, true); showFeedback('Range reset');
 };
@@ -188,7 +188,14 @@ renderer.setAnimationLoop(time => {
     let mx = input.move.x, my = input.move.y;
     if (keys.size) { mx += Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')); my += Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')); }
     const move = worldVector(mx, my, verticalScale, cameraYaw), moving = Math.hypot(move.x, move.z) > 0.01;
-    const speed = input.focus ? 3 : 6;
+    // Gentle thumb response: steer both travel and targeting through one filter.
+    // Releasing the stick still stops travel immediately, without inertia.
+    if (input.moveHeld && moving && !input.pointerAim) {
+      const desired = Math.atan2(move.x, move.z), strength = Math.hypot(move.x, move.z);
+      steeringAngle = steeringAngle === null ? desired : followAngle(steeringAngle, desired, dt, 10);
+      move.x = Math.sin(steeringAngle) * strength; move.z = Math.cos(steeringAngle) * strength;
+    } else if (!input.moveHeld) steeringAngle = null;
+    const speed = input.focus ? 3 : input.moveHeld ? 4.5 : 6;
     player.position.x = THREE.MathUtils.clamp(player.position.x + move.x * dt * speed, -13.1, 13.1);
     player.position.z = THREE.MathUtils.clamp(player.position.z + move.z * dt * speed, -13.1, 13.1);
     if (moving) { leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.36; rightLeg.rotation.x = -leftLeg.rotation.x; } else leftLeg.rotation.x = rightLeg.rotation.x = 0;

@@ -111,3 +111,20 @@ test('sticky assist acquires at 6 degrees, retains to 9, follows travel and rele
   targets[0].hp = 100; a.update(0,0,0,targets,true); a.track(0,0,-4,targets,true); assert.equal(a.target,-1, 'range releases');
   a.update(0,0,0,targets,true); a.update(0,0,0,targets,false); assert.equal(a.target,-1, 'release/cancel/OFF resets retention');
 });
+
+
+test('gentle stick has a wider neutral zone, softer midrange and full travel at the edge', () => {
+  assert.deepEqual(stickVector(15,0,100),{x:0,y:0});
+  const half=stickVector(50,0,100).x;
+  assert.ok(half>0 && half<(0.5-0.16)/(1-0.16));
+  assert.ok(Math.abs(Math.hypot(...Object.values(stickVector(35.355339,35.355339,100)))-half)<1e-7);
+  assert.equal(stickVector(100,0,100).x,1); assert.equal(stickVector(150,0,100).x,1);
+});
+test('gentle steering absorbs brief target wobble while a sustained deliberate turn releases', () => {
+  const rad=Math.PI/180, targets=[{x:0,z:3,hp:100}], a=new StickyAim();
+  a.update(4*rad,0,0,targets,true); assert.equal(a.target,0);
+  const pulse=followAngle(0,12*rad,0.03,10); assert.ok(pulse>0 && pulse<4*rad);
+  a.update(4*rad+pulse,0,0,targets,true); assert.equal(a.target,0);
+  const deliberate=followAngle(0,12*rad,0.5,10);
+  a.update(4*rad+deliberate,0,0,targets,true); assert.equal(a.target,-1);
+});

@@ -2,10 +2,10 @@ export const WEAPONS = [
   { name: 'RIFLE', capacity: 30, interval: 0.105, reload: 1.35, damage: 25, spread: 0.022, kick: 0.14 },
   { name: 'PISTOL', capacity: 12, interval: 0.27, reload: 0.95, damage: 40, spread: 0.012, kick: 0.23 },
 ];
-export function stickVector(x, y, radius, deadzone = 0.13) {
+export function stickVector(x, y, radius, deadzone = 0.16) {
   const length = Math.hypot(x, y);
   if (length <= radius * deadzone) return { x: 0, y: 0 };
-  const strength = Math.min(1, (length / radius - deadzone) / (1 - deadzone));
+  const strength = Math.min(1, ((length / radius - deadzone) / (1 - deadzone)) ** 1.25);
   return { x: x / length * strength, y: y / length * strength };
 }
 export function worldVector(x, y, verticalScale, yaw = 0) {
