@@ -42,27 +42,75 @@ try {
   assert.equal((await snapshot()).reloading, 0); assert.equal((await snapshot()).ammo, 12); results.push('Weapon switching and actual magazine reload through UI');
   await page.locator('#reset').click();
   const center = async id => { const b = await page.locator(id).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
-  const move = await center('#move'), aim = await center('#aim'), fire = await center('#fire-left');
+  const move = await center('#move'), fire = await center('#fire-right');
   const cdp = await context.newCDPSession(page);
   const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([id, x, y]) => ({ id, x, y, radiusX: 4, radiusY: 4, force: 1 })) });
+  const closeOffset = (a, b) => { assert.ok(Math.abs(a.x - b.x) < 1e-5 && Math.abs(a.z - b.z) < 1e-5, 'reticle offset preserved: ' + JSON.stringify({ a, b })); };
+  assert.equal(await page.locator('#aim, #fire-left, #mode, #focus').count(), 0, 'no second joystick or claw controls');
   before = await snapshot();
-  await touch('touchStart', [[1, move.x, move.y], [2, aim.x, aim.y], [3, fire.x, fire.y]]);
-  await touch('touchMove', [[1, move.x + 40, move.y], [2, aim.x, aim.y - 40], [3, fire.x, fire.y]]);
+  assert.equal(before.controls, 'two-thumb-swipe');
+  await touch('touchStart', [[1, move.x, move.y], [2, 620, 170]]);
+  await advance(0.08); closeOffset((await snapshot()).aimOffset, before.aimOffset);
+  await touch('touchMove', [[1, move.x + 40, move.y], [2, 685, 195]]);
   await advance(0.5);
-  after = await snapshot(); assert.ok(after.x > before.x + 0.7 && after.z < before.z - 0.7); assert.ok(after.aimZ < -0.65 && after.aimX < -0.65); assert.ok(after.shots > before.shots); assert.equal(after.fireCount, 1);
+  after = await snapshot();
+  assert.ok(after.x > before.x + 0.7 && after.z < before.z - 0.7);
+  assert.ok(Math.abs(after.aimX - before.aimX) > 0.1, 'free swipe changes gun direction');
+  assert.equal(after.shots, before.shots); assert.equal(after.fireCount, 0);
   assert.ok(after.cameraX > before.cameraX && after.cameraZ < before.cameraZ, 'camera follows movement');
   assert.ok(Math.abs(after.playerScreenX - 422) < 50, 'player stays close to screen center');
-  results.push('Three simultaneous fingers independently move, aim, and fire');
+  assert.equal(after.cameraYaw, before.cameraYaw, 'look does not rotate the isometric camera');
+  results.push('Two thumbs: left moves while free right swipe aims without firing or touch-down snapping');
+  await touch('touchEnd', [[2, 685, 195]]);
+  await advance(0.08); closeOffset((await snapshot()).aimOffset, after.aimOffset);
+  before = await snapshot(); assert.ok(before.move.x > 0); assert.equal(before.looking, false);
+  await touch('touchStart', [[1, move.x + 40, move.y], [2, fire.x, fire.y]]);
+  await advance(0.08); closeOffset((await snapshot()).aimOffset, before.aimOffset);
+  // Drag beyond the button boundary: pointer capture must keep aim and fire together.
+  await touch('touchMove', [[1, move.x + 40, move.y], [2, fire.x - 110, fire.y - 80]]);
+  await advance(0.4); after = await snapshot();
+  assert.ok(after.x > before.x + 0.7); assert.ok(after.shots > before.shots); assert.equal(after.fireCount, 1);
+  assert.ok(Math.abs(after.aimX - before.aimX) > 0.15);
+  results.push('Exactly two fingers move, aim and fire together; fire drag works outside button');
   await touch('touchEnd', []); await advance(0.18);
-  const released = await snapshot(); assert.equal(released.fireCount, 0); assert.equal(released.move.x, 0); assert.equal(released.aim.y, 0);
-  await advance(0.2); after = await snapshot(); assert.equal(after.shots, released.shots); assert.equal(after.x, released.x); results.push('Touch release stops movement and firing without stuck inputs');
-  await page.locator('#mode').click();
-  await touch('touchStart', [[2, aim.x, aim.y]]); await touch('touchMove', [[2, aim.x + 40, aim.y]]); await advance(0.35);
-  assert.ok((await snapshot()).shots > after.shots);
-  await touch('touchCancel', []); await advance(0.16); assert.equal((await snapshot()).aim.x, 0); results.push('Two-thumb aim-and-fire and cancellation');
+  const released = await snapshot(); assert.equal(released.fireCount, 0); assert.equal(released.move.x, 0); assert.equal(released.looking, false);
+  await advance(0.2); after = await snapshot(); assert.equal(after.shots, released.shots); assert.equal(after.x, released.x); closeOffset(after.aimOffset, released.aimOffset);
+  results.push('Release stops movement and firing while retaining the last aim');
+
+  await page.locator('#reset').click();
+  const swipe = async (x, y, dx, dy) => {
+    await touch('touchStart', [[2, x, y]]); await touch('touchMove', [[2, x + dx, y + dy]]); await advance(0.08); await touch('touchEnd', []); await advance(0.05);
+  };
+  const initial = (await snapshot()).aimOffset;
+  await swipe(620, 170, 45, -20); const firstSwipe = (await snapshot()).aimOffset;
+  await swipe(520, 145, 45, -20); const secondSwipe = (await snapshot()).aimOffset;
+  closeOffset({ x: secondSwipe.x - firstSwipe.x, z: secondSwipe.z - firstSwipe.z }, { x: firstSwipe.x - initial.x, z: firstSwipe.z - initial.z });
+  assert.equal((await snapshot()).shots, 0);
+  results.push('Repeated swipes accumulate equally from different starting positions; free look never shoots');
+
+  await page.locator('#reset').click(); before = await snapshot();
+  const mobileTarget = before.targets[0], yaw = before.cameraYaw;
+  const dx = mobileTarget.x - before.x - before.aimOffset.x, dz = mobileTarget.z - before.z - before.aimOffset.z;
+  const pixelsPerUnit = 390 / 16;
+  await swipe(620, 170, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) * pixelsPerUnit, (dx * Math.sin(yaw) + dz * Math.cos(yaw)) * before.verticalScale * pixelsPerUnit);
+  const aimed = await snapshot();
+  await touch('touchStart', [[2, fire.x, fire.y]]); await advance(0.4);
+  after = await snapshot(); assert.ok(after.hits >= 3); closeOffset(after.aimOffset, aimed.aimOffset);
+  await touch('touchCancel', []); await advance(0.12);
+  const cancelled = await snapshot(); assert.equal(cancelled.fireCount, 0); assert.equal(cancelled.looking, false);
+  await advance(0.2); assert.equal((await snapshot()).shots, cancelled.shots);
+  results.push('Mobile swipe then held fire hits real targets; touch cancellation stops shooting');
+
+  await touch('touchStart', [[1, move.x, move.y], [2, fire.x, fire.y]]);
+  await touch('touchMove', [[1, move.x + 40, move.y], [2, fire.x + 20, fire.y]]);
+  await page.setViewportSize({ width: 846, height: 392 }); await advance(0.12);
+  after = await snapshot(); assert.equal(after.fireCount, 0); assert.equal(after.move.x, 0); assert.equal(after.looking, false);
+  await touch('touchCancel', []);
+  await page.setViewportSize({ width: 844, height: 390 }); await advance(0.05);
+  results.push('Orientation/viewport change clears held controls');
   await page.screenshot({ path: 'artifacts/landscape.png' });
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
-  for (const id of ['#move', '#aim', '#fire-right', '#reload', '#swap']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
+  for (const id of ['#move', '#fire-right', '#reload', '#swap']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
   await page.screenshot({ path: 'artifacts/portrait.png' });
   assert.deepEqual(errors, []); results.push('Landscape/portrait UI fits; no runtime or console errors');
   await writeFile('artifacts/browser-result.json', JSON.stringify({ pass: true, results, snapshot: await snapshot() }, null, 2));

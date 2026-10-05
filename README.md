@@ -4,14 +4,14 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=direct-3)**
+**[Open the mobile demo](https://degree-choice.com/?v=thumb-4)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
-- Left stick moves; right stick aims independently. Both sticks follow screen direction through the rotated isometric camera. Facing stays where you last aimed.
-- Hold either FIRE button. Left FIRE supports a third finger while both thumbs use sticks.
-- Toggle **Aim + fire** for two-thumb movement and shooting. Firing starts past half stick travel.
-- RIFLE/PISTOL switches weapon; RELOAD refills with unlimited reserve. FOCUS reduces spread and movement speed while held.
+- Left stick moves. Swipe anywhere on the free right half to move the aiming reticle; the gun faces it. Lift and replant without an aim jump.
+- Hold the right **FIRE** button to shoot. Drag the same thumb while holding to adjust aim, including outside the button. Left thumb can keep moving throughout: only two fingers needed.
+- Swipe-to-aim alone never fires. The isometric camera keeps its fixed angle and follows the player.
+- RIFLE/PISTOL switches weapon; RELOAD refills with unlimited reserve.
 - Desktop: WASD/arrows, mouse aim, left mouse/Space fire, right mouse focus, R reload, Q switch.
 - Landscape recommended; safe-area padding and portrait layout included.
 
@@ -24,9 +24,9 @@ Open http://localhost:4173 or the Mac's LAN IP on a phone on the same Wi-Fi. Thr
 
 ## Control rationale
 
-[PUBG Mobile's official controls](https://pubgmobile.helpshift.com/hc/en/3-pubg-mobile/faq/37-what-are-the-controls/) separate movement, aim and attack. [Fortnite's official mobile guide](https://www.fortnite.com/news/getting-started---fortnite-for-mobile) documents dedicated held fire and alternative firing modes. This prototype adapts those principles to a top-down direction stick; it does not reproduce their first-person camera controls or claim a ranking of 2026 games.
+[PUBG Mobile's official controls](https://pubgmobile.helpshift.com/hc/en/3-pubg-mobile/faq/37-what-are-the-controls/) separate movement, aim and attack. [Fortnite's official mobile guide](https://www.fortnite.com/news/getting-started---fortnite-for-mobile) documents dedicated held fire and alternative firing modes. This prototype uses a two-thumb adaptation for a fixed isometric camera: free right-side swipe aiming and a separate fire button that also accepts aiming drags. The owner-provided [COD Mobile HUD video](https://www.youtube.com/watch?v=rft_7jTa5N4) shows the two-finger baseline at 0:45 before its claw examples. No extra fingers, jump/crouch controls or first-person camera rotation are required.
 
-Pointer capture tracks each finger separately, with a radial deadzone, analog movement, normalized diagonal speed, immediate aim, and clearing on cancellation/backgrounding/resize. No aim assist: the test exposes the underlying feel. Simple Lambert materials, two lights, one 512px shadow map, capped pixel ratio, pooled tracers, no textures or postprocessing.
+Pointer capture tracks each finger separately, with a radial deadzone, analog movement, normalized diagonal speed, accumulated screen-relative swipe travel, persistent aim, and clearing on cancellation/backgrounding/resize. No aim assist: the test exposes the underlying feel. Simple Lambert materials, two lights, one 512px shadow map, capped pixel ratio, pooled tracers, no textures or postprocessing.
 
 ARMAGEDOM was inspected read-only for angled-camera and lit-actor visual inspiration. All movement, input, targeting and weapon code is independently authored in this repository; no ARMAGEDOM combat code, actors, assets, or dependencies are imported.
 

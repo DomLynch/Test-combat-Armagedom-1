@@ -15,20 +15,19 @@
 <body>
   <canvas id="game" aria-label="3D isometric weapon test arena"></canvas>
   <header>
-    <div><strong>COMBAT LAB</strong><small>ISOMETRIC / 02</small></div>
+    <div><strong>COMBAT LAB</strong><small>TWO THUMBS / 04</small></div>
     <div id="status" aria-live="polite">RIFLE · 30 / 30</div>
     <button id="reset">Reset</button>
   </header>
   <div id="stats">Hits 0 · Shots 0 · Accuracy —</div>
   <div id="feedback" aria-live="polite"></div>
-  <button class="fire fire-left" id="fire-left" aria-label="Left fire button">FIRE</button>
-  <div class="options"><button id="mode" aria-pressed="false">Aim + fire: OFF</button><button id="fullscreen">Full screen</button></div>
+  <div class="options"><button id="fullscreen">Full screen</button></div>
   <div class="stick" id="move" role="group" aria-label="Movement joystick"><span class="stick-label">MOVE</span><div class="knob"></div></div>
-  <div class="stick" id="aim" role="group" aria-label="Aim joystick"><span class="stick-label">AIM</span><div class="knob"></div></div>
-  <button class="fire fire-right" id="fire-right" aria-label="Right fire button">FIRE</button>
-  <div class="actions"><button id="reload">RELOAD</button><button id="swap">PISTOL</button><button id="focus" aria-label="Hold for precision aim">FOCUS</button></div>
-  <div id="hint">Left thumb moves · Right thumb aims · Hold FIRE<br>Landscape recommended · WASD + mouse on desktop</div>
+  <div id="look-hint">SWIPE TO AIM</div>
+  <button class="fire fire-right" id="fire-right" aria-label="Fire; hold and drag to aim">FIRE<small>HOLD + DRAG</small></button>
+  <div class="actions"><button id="reload">RELOAD</button><button id="swap">PISTOL</button></div>
+  <div id="hint">Left stick moves · Swipe right side to aim<br>Hold + drag FIRE to shoot and aim</div>
   <div id="welcome" class="hidden" role="alert"></div>
-  <script type="module" src="./src/main.js?v=direct-3"></script>
+  <script type="module" src="./src/main.js?v=thumb-4"></script>
 </body>
 </html>

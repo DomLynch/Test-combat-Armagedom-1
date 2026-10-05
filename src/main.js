@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, rayCircle } from './combat.js?v=direct-3';
-import { createInput } from './input.js?v=direct-3';
+import { WeaponState, worldVector, lookTravel, rayCircle } from './combat.js?v=thumb-4';
+import { createInput } from './input.js?v=thumb-4';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -89,15 +89,15 @@ const tracers = Array.from({ length: 16 }, () => {
   return { line, remaining: 0 };
 });
 let tracerIndex = 0, started = true, angle = 0, aimX = 0, aimZ = -1, kick = 0, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
+const aimOffset = new THREE.Vector2(0, -5);
 const weapons = new WeaponState();
 function reload() { if (started) weapons.reload(); }
 function swap() { if (!started) return; weapons.swap(); barrel.scale.z = weapons.index ? 0.5 : 0.95; barrel.position.z = weapons.index ? -0.6 : -0.76; }
 const input = createInput(canvas, reload, swap);
 $('reload').onclick = reload; $('swap').onclick = swap;
-$('mode').onclick = () => { input.aimFire = !input.aimFire; $('mode').textContent = `Aim + fire: ${input.aimFire ? 'ON' : 'OFF'}`; $('mode').setAttribute('aria-pressed', String(input.aimFire)); };
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
-  input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; angle = 0; kick = flashTime = 0;
+  input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; kick = flashTime = 0;
   barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
   for (const t of tracers) { t.remaining = 0; t.line.visible = false; } updateCamera(0, true); showFeedback('Range reset');
 };
@@ -159,18 +159,23 @@ renderer.setAnimationLoop(time => {
     player.position.z = THREE.MathUtils.clamp(player.position.z + move.z * dt * speed, -13.1, 13.1);
     if (moving) { legs.rotation.y = Math.atan2(-move.x, -move.z); leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.36; rightLeg.rotation.x = -leftLeg.rotation.x; } else leftLeg.rotation.x = rightLeg.rotation.x = 0;
     updateCamera(dt);
-    const aim = worldVector(input.aim.x, input.aim.y, verticalScale, cameraYaw);
-    if (Math.hypot(aim.x, aim.z) > 0.01) { const length = Math.hypot(aim.x, aim.z); aimX = aim.x / length; aimZ = aim.z / length; }
-    else if (input.pointerAim) {
+    if (input.lookDelta.x || input.lookDelta.y) {
+      const travel = lookTravel(input.lookDelta.x, input.lookDelta.y, (camera.top - camera.bottom) / innerHeight, verticalScale, cameraYaw);
+      aimOffset.x += travel.x; aimOffset.y += travel.z;
+      input.lookDelta.x = input.lookDelta.y = 0;
+      if (aimOffset.length() > 14) aimOffset.setLength(14);
+    } else if (input.pointerAim) {
       pointer.set(input.pointerAim.x / innerWidth * 2 - 1, 1 - input.pointerAim.y / innerHeight * 2); raycaster.setFromCamera(pointer, camera);
-      if (raycaster.ray.intersectPlane(aimPlane, mouseWorld)) { const x = mouseWorld.x - player.position.x, z = mouseWorld.z - player.position.z, length = Math.hypot(x, z); if (length > 0.1) { aimX = x / length; aimZ = z / length; } }
+      if (raycaster.ray.intersectPlane(aimPlane, mouseWorld)) aimOffset.set(mouseWorld.x - player.position.x, mouseWorld.z - player.position.z);
     }
+    const aimLength = aimOffset.length();
+    if (aimLength > 0.15) { aimX = aimOffset.x / aimLength; aimZ = aimOffset.y / aimLength; }
     angle = Math.atan2(-aimX, -aimZ); torso.rotation.y = angle;
     kick *= Math.exp(-dt * 22); gun.position.z = kick;
     player.updateMatrixWorld(true);
-    if (input.fires.size || (input.aimFire && Math.hypot(input.aim.x, input.aim.y) > 0.5)) shoot(moving);
+    if (input.fires.size) shoot(moving);
     flashTime = Math.max(0, flashTime - dt); flash.visible = flashTime > 0;
-    reticle.position.set(player.position.x + aimX * 5, 1.25, player.position.z + aimZ * 5);
+    reticle.position.set(player.position.x + aimOffset.x, 1.25, player.position.z + aimOffset.y);
     setLine(sight, player.position.x, 1.25, player.position.z, reticle.position.x, 1.25, reticle.position.z);
     for (const target of targets) {
       if (target.down > 0) { target.down -= dt; target.group.visible = false; if (target.down <= 0) { target.hp = 100; target.group.visible = true; } }
@@ -190,7 +195,7 @@ canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); input.cle
 window.__combat = {
   snapshot() {
     const playerScreen = new THREE.Vector3(player.position.x, 1, player.position.z).project(camera);
-    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aim: { ...input.aim }, fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
+    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, looking: input.looking, controls: 'two-thumb-swipe', fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
       targets: targets.map(t => { const v = new THREE.Vector3(t.x, 1.25, t.z).project(camera); return { x: t.x, z: t.z, hp: t.hp, screenX: (v.x + 1) / 2 * innerWidth, screenY: (1 - v.y) / 2 * innerHeight }; }) };
   }
 };

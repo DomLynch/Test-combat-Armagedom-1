@@ -12,7 +12,7 @@ import urllib.request
 stage = Path(sys.argv[1]).resolve()
 manifest = json.loads((stage / 'payload/release.json').read_text())
 release_id = manifest['release_id']
-assert release_id.startswith('direct-3-') and all(c.isalnum() or c == '-' for c in release_id)
+assert release_id.startswith(('direct-3-', 'thumb-4-')) and all(c.isalnum() or c == '-' for c in release_id)
 assert shutil.disk_usage('/').free > 40 * 10**9
 config = Path('/etc/nginx/sites-available/degree-choice-armagedom.conf')
 assert Path('/etc/nginx/sites-enabled/degree-choice-armagedom.conf').resolve() == config
@@ -49,12 +49,14 @@ assert not candidate.exists() and not candidate.is_symlink()
 candidate.symlink_to(release)
 os.replace(candidate, current)
 pending_config = config.with_suffix('.combat-pending')
+config_changed = replacement != config.read_bytes()
 try:
-    pending_config.write_bytes(replacement)
-    pending_config.chmod(0o644)
-    os.replace(pending_config, config)
-    subprocess.run(['nginx', '-t'], check=True)
-    subprocess.run(['systemctl', 'reload', 'nginx'], check=True)
+    if config_changed:
+        pending_config.write_bytes(replacement)
+        pending_config.chmod(0o644)
+        os.replace(pending_config, config)
+        subprocess.run(['nginx', '-t'], check=True)
+        subprocess.run(['systemctl', 'reload', 'nginx'], check=True)
     after = {p: digest(p) for p in protected}
     assert before == after, 'Protected main-game config changed during switch'
     main_after = fetch(main_before['url'])
@@ -62,20 +64,22 @@ try:
     # Reload returns after signalling the master; workers may still serve the old vhost briefly.
     deadline = time.monotonic() + 10
     while True:
-        root = fetch('https://degree-choice.com/?v=direct-3')
+        root = fetch('https://degree-choice.com/?v=' + release_id)
         if root['status'] == 200 and root['url'].startswith('https://degree-choice.com/') and root['sha256'] == manifest['files_sha256']['index.html']:
             break
         assert time.monotonic() < deadline, f'Prototype root did not converge: {root}'
         time.sleep(0.25)
 except Exception:
     # Restore only the Degree Choice host and prototype symlink.
-    shutil.copy2(backup / 'degree-choice.conf', config)
+    if config_changed:
+        shutil.copy2(backup / 'degree-choice.conf', config)
     current.unlink()
     if old_target is not None:
         current.symlink_to(old_target)
-    subprocess.run(['nginx', '-t'], check=True)
-    subprocess.run(['systemctl', 'reload', 'nginx'], check=True)
+    if config_changed:
+        subprocess.run(['nginx', '-t'], check=True)
+        subprocess.run(['systemctl', 'reload', 'nginx'], check=True)
     raise
-receipt = {'release_id': release_id, 'source_commit': manifest['source_commit'], 'root': root, 'main_before': main_before, 'main_after': main_after, 'protected_configs_before': before, 'protected_configs_after': after, 'previous_prototype_target': old_target, 'backup': str(backup), 'release': str(release), 'files_sha256': manifest['files_sha256']}
+receipt = {'nginx_config_changed': config_changed, 'release_id': release_id, 'source_commit': manifest['source_commit'], 'root': root, 'main_before': main_before, 'main_after': main_after, 'protected_configs_before': before, 'protected_configs_after': after, 'previous_prototype_target': old_target, 'backup': str(backup), 'release': str(release), 'files_sha256': manifest['files_sha256']}
 (backup / 'deployment-receipt.json').write_text(json.dumps(receipt, indent=2))
 print(json.dumps(receipt, indent=2))

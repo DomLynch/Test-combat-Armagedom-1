@@ -15,6 +15,11 @@ export function worldVector(x, y, verticalScale, yaw = 0) {
   const right = x / length * strength, down = y / verticalScale / length * strength;
   return { x: right * Math.cos(yaw) + down * Math.sin(yaw), z: -right * Math.sin(yaw) + down * Math.cos(yaw) };
 }
+// Screen-pixel travel to ground-plane travel, without joystick normalization.
+export function lookTravel(dx, dy, unitsPerPixel, verticalScale, yaw) {
+  const right = dx * unitsPerPixel, down = dy * unitsPerPixel / verticalScale;
+  return { x: right * Math.cos(yaw) + down * Math.sin(yaw), z: -right * Math.sin(yaw) + down * Math.cos(yaw) };
+}
 // Analytic hitscan against a target circle, returning the entry distance.
 export function rayCircle(ox, oz, dx, dz, cx, cz, radius) {
   const x = cx - ox, z = cz - oz;

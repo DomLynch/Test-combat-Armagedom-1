@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stickVector, worldVector, rayCircle, WeaponState } from '../src/combat.js';
+import { stickVector, worldVector, lookTravel, rayCircle, WeaponState } from '../src/combat.js';
 test('stick deadzone, analog response, and clamping', () => {
   assert.deepEqual(stickVector(1, 1, 50), { x: 0, y: 0 });
   assert.equal(stickVector(100, 0, 50).x, 1);
@@ -34,4 +34,15 @@ test('fire rate, empty magazine, reload, and weapon swap state', () => {
   w.tick(0.11); assert.equal(w.fire(), false); assert.ok(w.reloadRemaining > 0);
   w.tick(0.5); assert.equal(w.fire(), false); w.tick(1); assert.equal(w.ammo[0], 30);
   w.fire(); w.reload(); w.swap(); assert.equal(w.reloadRemaining, 0); assert.equal(w.ammo[0], 29); assert.equal(w.ammo[1], 12);
+});
+
+test('look travel preserves pixel distance, screen direction, and accumulated swipes', () => {
+  const yaw = Math.PI / 4, vertical = 0.65, scale = 0.04;
+  for (const [dx, dy] of [[80, 0], [0, -60], [-70, 35]]) {
+    const v = lookTravel(dx, dy, scale, vertical, yaw);
+    assert.ok(Math.abs((v.x * Math.cos(yaw) - v.z * Math.sin(yaw)) / scale - dx) < 1e-9);
+    assert.ok(Math.abs((v.x * Math.sin(yaw) + v.z * Math.cos(yaw)) * vertical / scale - dy) < 1e-9);
+    const half = lookTravel(dx / 2, dy / 2, scale, vertical, yaw);
+    assert.ok(Math.abs(half.x * 2 - v.x) < 1e-9 && Math.abs(half.z * 2 - v.z) < 1e-9);
+  }
 });

@@ -14,18 +14,16 @@ header button { margin-left: auto; pointer-events: auto; }
 #feedback { position: absolute; top: 22%; width: 100%; text-align: center; color: var(--mint); font-weight: 800; font-size: 18px; pointer-events: none; }
 .stick { position: absolute; width: 140px; height: 140px; border-radius: 50%; border: 2px solid #94b7b666; background: #1d2b324d; bottom: calc(26px + var(--safe-bottom)); touch-action: none; }
 #move { left: max(26px, env(safe-area-inset-left)); }
-#aim { right: max(26px, env(safe-area-inset-right)); }
 .stick-label { position: absolute; left: 0; right: 0; top: -24px; text-align: center; font-size: 11px; letter-spacing: 2px; color: #b1c6c8; pointer-events: none; }
 .knob { position: absolute; width: 54px; height: 54px; top: calc(50% - 27px); left: calc(50% - 27px); border-radius: 50%; background: #bccdcc80; border: 2px solid #d9e9e8ad; pointer-events: none; }
-#aim .knob { background: #a9f9d080; border-color: #a9f9d0; }
-.fire { position: absolute; border-radius: 50%; width: 76px; height: 76px; border: 2px solid #e7aa7c; color: #ffcfaa; background: #302722c9; letter-spacing: 1px; }
-.fire-right { right: max(52px, env(safe-area-inset-right)); bottom: calc(208px + var(--safe-bottom)); }
-.fire-left { left: max(44px, env(safe-area-inset-left)); top: 116px; width: 65px; height: 65px; font-size: 12px; }
+.fire { position: absolute; border-radius: 50%; width: 112px; height: 112px; border: 2px solid #e7aa7c; color: #ffcfaa; background: #302722c9; letter-spacing: 1px; }
+.fire-right { right: max(38px, env(safe-area-inset-right)); bottom: calc(40px + var(--safe-bottom)); }
+.fire small { display: block; font-size: 8px; letter-spacing: 0.5px; margin-top: 5px; pointer-events: none; }
+#look-hint { position: absolute; right: max(32px, env(safe-area-inset-right)); bottom: calc(176px + var(--safe-bottom)); color: #b1c6c8; font-size: 11px; letter-spacing: 1px; pointer-events: none; }
 .actions { position: absolute; bottom: calc(30px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
 .actions button { font-size: 11px; padding: 10px 12px; min-width: 66px; }
 .options { position: absolute; top: 86px; right: max(20px, env(safe-area-inset-right)); display: flex; gap: 8px; }
 .options button { min-height: 42px; font-size: 11px; padding: 8px 12px; }
-#mode[aria-pressed="true"] { border-color: var(--mint); color: var(--mint); }
 #hint { position: absolute; bottom: calc(92px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); text-align: center; font-size: 11px; line-height: 1.6; color: #a0b3b8; pointer-events: none; }
 #welcome { position: absolute; inset: 0; background: #11191eea; display: grid; place-items: center; padding: 20px; }
 #welcome.hidden { display: none; }
@@ -35,5 +33,19 @@ h1 { font-size: clamp(36px, 7vh, 65px); line-height: 1; margin: 20px 0; }
 p { color: #b4c3c7; font-size: 14px; line-height: 1.65; }
 #start { background: var(--mint); color: #14211c; width: 100%; margin: 10px 0 15px; border: 0; }
 .welcome-card small { font-size: 11px; color: #a0b3b8; }
-@media (max-height: 500px) { .stick { width: 118px; height: 118px; bottom: calc(18px + var(--safe-bottom)); } .fire-right { bottom: calc(167px + var(--safe-bottom)); width: 65px; height: 65px; } .fire-left { top: 103px; width: 58px; height: 58px; } .options { top: 73px; } #hint { bottom: calc(82px + var(--safe-bottom)); font-size: 10px; } .welcome-card { width: 540px; } .welcome-card h1 { font-size: 34px; margin: 12px 0; } .welcome-card p { margin: 8px 0; font-size: 12px; } }
-@media (max-width: 580px) { header { gap: 10px; } header strong { font-size: 11px; } #status { font-size: 11px; } header button { padding: 8px; } .actions { bottom: calc(192px + var(--safe-bottom)); } #hint { bottom: calc(257px + var(--safe-bottom)); width: 100%; } .fire-right { bottom: calc(277px + var(--safe-bottom)); } .options { top: 109px; } .fire-left { top: 165px; } #feedback { top: 27%; } }
+@media (max-height: 500px) {
+  .stick { width: 118px; height: 118px; bottom: calc(18px + var(--safe-bottom)); }
+  .fire-right { bottom: calc(30px + var(--safe-bottom)); width: 96px; height: 96px; }
+  #look-hint { bottom: calc(146px + var(--safe-bottom)); }
+  .options { top: 73px; }
+  #hint { bottom: calc(82px + var(--safe-bottom)); font-size: 10px; }
+}
+@media (max-width: 580px) {
+  header { gap: 10px; } header strong { font-size: 11px; } #status { font-size: 11px; } header button { padding: 8px; }
+  .stick { width: 118px; height: 118px; }
+  .actions { bottom: calc(184px + var(--safe-bottom)); }
+  #hint { bottom: calc(246px + var(--safe-bottom)); width: 100%; }
+  .fire-right { right: max(26px, env(safe-area-inset-right)); }
+  #look-hint { right: max(24px, env(safe-area-inset-right)); }
+  .options { top: 109px; } #feedback { top: 27%; }
+}
