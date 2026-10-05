@@ -1,5 +1,17 @@
 # Combat prototype state
 
+## Current — isometric revision 02, 2026-10-05
+
+Owner corrected the visual target to a Diablo/Path of Exile style 3D isometric presentation. ARMAGEDOM is a read-only visual reference; combat/input/targeting remain independent and authored from scratch here. No donor code or assets imported, no ARMAGEDOM files written.
+
+Changed: 45° camera rotation, raised angled viewpoint, closer framing with gentle player follow, lit primitive humanoid holding a gun, articulated walking legs, dimensional floor/rails/targets and one 512px shadow map. Sticks are mapped through the isometric camera basis so screen direction remains correct; mouse aiming intersects weapon height. Weapons and touch ownership retain the independent prototype foundation.
+
+Evidence: five logic tests PASS (`test-combat-armagedom-1-f15d119e69f6`); final browser PASS (`test-combat-armagedom-1-964eca0f3f71`, exit 0). Verified screen-relative strafing/aim, following camera, real hits, reload, three concurrent fingers, release/cancel, two-thumb mode and both viewport layouts without runtime/console errors. Landscape/portrait screenshots visually reviewed; recovered into `artifacts/isometric/` with exact job manifest/result. The first browser test used wall time that was too short for the VPS software renderer; checks now wait for bounded simulation progress and still require actual movement/shots/hits.
+
+Delivery: update the existing Pages demo only. Physical iPhone/Safari frame pacing and player feel remain unverified; next step is owner landscape play. Initial receipts below are historical.
+
+## Initial prototype receipts
+
 2026-10-05. Canonical checkout: `/Users/domininclynch/Desktop/Business/Test-combat-Armagedom-1`. Repository: `DomLynch/Test-combat-Armagedom-1`. Scope: an isolated mobile-web control experiment; no main ARMAGEDOM source, Claude materials, or live game services modified.
 
 Implemented: flat 2.5D Three.js range; independent analog movement/aim; two dedicated fire buttons; optional two-thumb aim-and-fire; rifle/pistol cadence, magazines, reload, recoil feedback and precision focus; hitscan dummies and one moving target. Static vendored runtime; Node server for local/LAN use; GitHub Pages delivery.

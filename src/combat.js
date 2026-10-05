@@ -8,11 +8,12 @@ export function stickVector(x, y, radius, deadzone = 0.13) {
   const strength = Math.min(1, (length / radius - deadzone) / (1 - deadzone));
   return { x: x / length * strength, y: y / length * strength };
 }
-export function worldVector(x, y, verticalScale) {
+export function worldVector(x, y, verticalScale, yaw = 0) {
   const length = Math.hypot(x, y / verticalScale);
   if (!length) return { x: 0, z: 0 };
   const strength = Math.min(1, Math.hypot(x, y));
-  return { x: x / length * strength, z: y / verticalScale / length * strength };
+  const right = x / length * strength, down = y / verticalScale / length * strength;
+  return { x: right * Math.cos(yaw) + down * Math.sin(yaw), z: -right * Math.sin(yaw) + down * Math.cos(yaw) };
 }
 // Analytic hitscan against a target circle, returning the entry distance.
 export function rayCircle(ox, oz, dx, dz, cx, cz, radius) {

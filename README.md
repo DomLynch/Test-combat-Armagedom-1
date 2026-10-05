@@ -1,12 +1,12 @@
 # Test-combat-Armagedom-1
 
-Bare Three.js mobile-web combat prototype. Orthographic 2.5D arena, primitive character, seven targets (one moving). No art pipeline, game engine, or bundler.
+Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close, gently following orthographic camera, a primitive armed humanoid, and seven targets (one moving). No art pipeline, game engine, or bundler.
 
 ## Play
 
 **[Open the mobile demo](https://domlynch.github.io/Test-combat-Armagedom-1/)**
 
-- Left stick moves; right stick aims independently. Facing stays where you last aimed.
+- Left stick moves; right stick aims independently. Both sticks follow screen direction through the rotated isometric camera. Facing stays where you last aimed.
 - Hold either FIRE button. Left FIRE supports a third finger while both thumbs use sticks.
 - Toggle **Aim + fire** for two-thumb movement and shooting. Firing starts past half stick travel.
 - RIFLE/PISTOL switches weapon; RELOAD refills with unlimited reserve. FOCUS reduces spread and movement speed while held.
@@ -24,7 +24,9 @@ Open http://localhost:4173 or the Mac's LAN IP on a phone on the same Wi-Fi. Thr
 
 [PUBG Mobile's official controls](https://pubgmobile.helpshift.com/hc/en/3-pubg-mobile/faq/37-what-are-the-controls/) separate movement, aim and attack. [Fortnite's official mobile guide](https://www.fortnite.com/news/getting-started---fortnite-for-mobile) documents dedicated held fire and alternative firing modes. This prototype adapts those principles to a top-down direction stick; it does not reproduce their first-person camera controls or claim a ranking of 2026 games.
 
-Pointer capture tracks each finger separately, with a radial deadzone, analog movement, normalized diagonal speed, immediate aim, and clearing on cancellation/backgrounding/resize. No aim assist: the test exposes the underlying feel. Flat materials, capped pixel ratio, pooled tracers, no textures/shadows/postprocessing.
+Pointer capture tracks each finger separately, with a radial deadzone, analog movement, normalized diagonal speed, immediate aim, and clearing on cancellation/backgrounding/resize. No aim assist: the test exposes the underlying feel. Simple Lambert materials, two lights, one 512px shadow map, capped pixel ratio, pooled tracers, no textures or postprocessing.
+
+ARMAGEDOM was inspected read-only for angled-camera and lit-actor visual inspiration. All movement, input, targeting and weapon code is independently authored in this repository; no ARMAGEDOM combat code, actors, assets, or dependencies are imported.
 
 ## Verification
 
