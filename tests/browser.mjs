@@ -20,6 +20,11 @@ try {
   assert.equal(await page.locator('iframe').count(), 0, 'direct document, no iframe');
   const gameBounds = await page.locator('#game').boundingBox();
   assert.equal(gameBounds.width, 844); assert.equal(gameBounds.height, 390);
+  assert.equal(await page.title(), 'Mobile Combat Prototype');
+  assert.equal(await page.locator('meta[name=application-name]').getAttribute('content'), 'Mobile Combat Prototype');
+  const manifest = await (await page.request.get(new URL('/manifest.webmanifest', page.url()).href)).json();
+  assert.equal(manifest.name, 'Mobile Combat Prototype');
+  results.push('Page title, mobile application metadata and manifest use independent prototype name');
   results.push('Starts directly with viewport-filling canvas and no startup popup or iframe');
   const snapshot = () => page.evaluate(() => window.__combat.snapshot());
   const advance = async seconds => {
@@ -98,6 +103,26 @@ try {
   }
   assert.equal((await snapshot()).shots, 0);
   results.push('Actual touch swipes turn 90/180/270/full 360 in both directions with lift/replant');
+
+  // Reproduce stationary feet after the torso turns, at arbitrary intermediate headings.
+  await page.locator('#reset').click();
+  const aligned = s => {
+    assert.ok(angularDistance(s.bodyYaw, s.legsYaw) < 1e-5, 'legs share full-body heading');
+    assert.ok(angularDistance(s.bodyYaw, s.torsoYaw) < 1e-5, 'torso shares full-body heading');
+    assert.ok(angularDistance(s.bodyYaw, Math.atan2(-s.aimX,-s.aimZ)) < 1e-5, 'shots face the visible whole character');
+  };
+  let total = 0;
+  for (const degrees of [37,53,43,47,45,45,45,45,-37,-53,-43,-47,-45,-45,-45,-45]) {
+    await swipe(620,170,degrees,0); total += degrees;
+    await advance(0.25); const s = await snapshot(); aligned(s);
+    assert.ok(angularDistance(s.bodyYaw,-total*Math.PI/180) < 0.01, 'entire body reaches requested angle');
+    if ([37,180,270,360].includes(total)) await page.screenshot({path:`artifacts/body-${total}.png`});
+  }
+  await touch('touchStart',[[1,move.x+35,move.y],[2,620,170]]);
+  await touch('touchMove',[[1,move.x+35,move.y],[2,703,170]]); await advance(0.3);
+  aligned(await snapshot()); assert.ok((await snapshot()).move.x>0);
+  await touch('touchEnd',[]); await page.locator('#reset').click(); await advance(0.1);
+  results.push('Feet, hips and torso turn together at intermediate angles and through 360 both ways, including strafing; shot direction matches body');
 
   // Reload using CDP touch, including with left thumb still moving and repeated taps.
   const reloadButton = await center('#reload');

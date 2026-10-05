@@ -12,7 +12,7 @@ import urllib.request
 stage = Path(sys.argv[1]).resolve()
 manifest = json.loads((stage / 'payload/release.json').read_text())
 release_id = manifest['release_id']
-assert release_id.startswith(('direct-3-', 'thumb-4-', 'combat-5-', 'combat-6-')) and all(c.isalnum() or c == '-' for c in release_id)
+assert release_id.startswith(('direct-3-', 'thumb-4-', 'combat-5-', 'combat-6-', 'combat-7-')) and all(c.isalnum() or c == '-' for c in release_id)
 assert shutil.disk_usage('/').free > 40 * 10**9
 config = Path('/etc/nginx/sites-available/degree-choice-armagedom.conf')
 assert Path('/etc/nginx/sites-enabled/degree-choice-armagedom.conf').resolve() == config

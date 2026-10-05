@@ -4,15 +4,15 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-6)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-7)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
-- Left stick moves. Swipe sideways on the free right half to turn the gun through 360°. Swipe up/down to adjust reticle distance. Lift and replant without an aim jump.
+- Left stick moves. Swipe sideways on the free right half to turn the whole character smoothly through 360°. Swipe up/down to adjust reticle distance. Lift and replant without an aim jump.
 - Hold the right **FIRE** button to shoot. Drag the same thumb while holding to adjust aim, including outside the button. Left thumb can keep moving throughout: only two fingers needed.
 - Aim sensitivity cycles Low/Normal/High. Normal sensitivity turns one degree per horizontal pixel; heading is independent of reticle distance, so short-radius aiming cannot block turns.
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
-- Swipe-to-aim alone never fires. The isometric camera keeps its fixed angle and follows the player.
+- Swipe-to-aim alone never fires. Feet, hips, torso and gun share one smoothed heading. Shots follow the visible gun direction. The isometric camera keeps its fixed angle and follows the player.
 - RIFLE/PISTOL switches weapon; RELOAD responds on contact and refills with unlimited reserve. Repeated taps retain reload progress; a full magazine gives explicit feedback.
 - Assist: Light gives touch aim a small nudge only within six degrees of a nearby living target. It corrects at most 1.5° up close and fades to zero at six arena units. Toggle Assist: OFF for fully manual aim.
 - Desktop: WASD/arrows, mouse aim, left mouse/Space fire, right mouse focus, R reload, Q switch.

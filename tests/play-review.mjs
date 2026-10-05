@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const closeOnly = process.env.REVIEW_ONLY === 'close';
 const out = closeOnly ? 'artifacts/play-review-close' : 'artifacts/play-review';
 await mkdir(out + '/video', { recursive: true });
-const url = process.env.TEST_URL || 'https://degree-choice.com/?v=combat-6';
+const url = process.env.TEST_URL || 'https://degree-choice.com/?v=combat-7';
 const releaseMeta = await (await fetch(new URL('/release.json', url))).json();
 const integrity = [];
 for (const [name, expected] of Object.entries(releaseMeta.files_sha256)) {
@@ -47,7 +47,7 @@ function aimTravel(s, x, z) {
   const delta = Math.atan2(Math.sin(current - desired), Math.cos(current - desired));
   return { x: delta * 180 / Math.PI / s.sensitivity, y: (Math.hypot(s.aimOffset.x, s.aimOffset.z) - Math.hypot(x, z)) / (16 / 390) / s.sensitivity };
 }
-async function aimOffsetTo(x, z) { const s = await snapshot(), p = aimTravel(s, x, z); await swipe(p.x, p.y); }
+async function aimOffsetTo(x, z) { const s = await snapshot(), p = aimTravel(s, x, z); await swipe(p.x, p.y); await advance(0.25); }
 async function aimTarget(index) { const s=await snapshot(), t=s.targets[index]; await aimOffsetTo(t.x-s.x, t.z-s.z); }
 async function setPhase(text) { phase = text; phases.push({ text, wallSeconds: (performance.now()-wallStart)/1000 }); await page.locator('#review-phase').evaluate((el, value) => { el.textContent = value; }, text); }
 async function checkpoint(name) { const file = `${out}/${String(++checkpointIndex).padStart(2,'0')}-${name}.png`; await page.screenshot({ path: file }); const s=await sample(name); return { file, ...s }; }
@@ -86,7 +86,7 @@ try {
   if (!closeOnly) {
   await setPhase('00 · Continuous 180 / 270 / 360-degree turns');
   await down(1,moveCenter.x+20,moveCenter.y);
-  for (const degrees of [180,90,90,-180,-90,-90]) { const a=await snapshot(); await swipe(degrees,0); const b=await checkpoint('turn-'+degrees); observations.push({case:'turn',inputDegrees:degrees,rotationDegrees:angleBetween(a,b)}); }
+  for (const degrees of [180,90,90,-180,-90,-90]) { const a=await snapshot(); await swipe(degrees,0); await advance(0.25); const b=await checkpoint('turn-'+degrees); observations.push({case:'turn',inputDegrees:degrees,rotationDegrees:angleBetween(a,b)}); }
   await release();await reset();
   await setPhase('01 · Move, strafe and aim with two thumbs');
   await advance(0.6); await down(1,moveCenter.x,moveCenter.y); await move(1,moveCenter.x+40,moveCenter.y);
@@ -128,7 +128,7 @@ try {
   observations.push({case:'point-blank',range:Math.hypot(closeStart.targets[0].x-closeStart.x,closeStart.targets[0].z-closeStart.z),shots:closeEnd.shots-closeStart.shots,hits:closeEnd.hits-closeStart.hits,targetHp:closeEnd.targets[0].hp,aimX:closeEnd.aimX,aimZ:closeEnd.aimZ});
   await advance(0.8);await setPhase('08 · Review complete — original live game unchanged');await advance(0.8);
   const touchStats=await page.evaluate(()=>window.reviewTouchStats);assert.ok(touchStats.max<=2);assert.deepEqual(errors,[]);
-  if (releaseMeta.release_id.startsWith('combat-6-')) {
+  if (releaseMeta.release_id.startsWith('combat-7-')) {
     for (const turn of observations.filter(o => o.case === 'turn')) assert.ok(Math.abs(turn.rotationDegrees - Math.abs(turn.inputDegrees)) < 3, 'full-circle touch turns');
     const close = observations.find(o => o.case === 'point-blank');
     assert.ok(close.range > 0.5 && close.range < 0.7 && close.hits >= 3, 'controlled close-range shots hit');

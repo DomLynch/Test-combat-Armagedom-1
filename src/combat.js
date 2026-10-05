@@ -22,6 +22,11 @@ export function turnAim(x, z, dx, dy, sensitivity = 1, unitsPerPixel = 0.04) {
   const radius = Math.max(3, Math.min(14, Math.hypot(x, z) - dy * unitsPerPixel * sensitivity));
   return { x: Math.sin(angle) * radius, z: Math.cos(angle) * radius };
 }
+// Follow the shortest arc at a time-based rate, including across the ±180° seam.
+export function followAngle(current, target, dt, rate = 24) {
+  const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+  return current + delta * (1 - Math.exp(-Math.max(0, dt) * rate));
+}
 // A small, non-accumulating correction near a living target. No lock or long-range pull.
 export function aimAssist(angle, ox, oz, targets) {
   const cone = 6 * Math.PI / 180;

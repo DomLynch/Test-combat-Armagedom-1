@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stickVector, worldVector, turnAim, aimAssist, rayCircle, WeaponState } from '../src/combat.js';
+import { stickVector, worldVector, turnAim, followAngle, aimAssist, rayCircle, WeaponState } from '../src/combat.js';
 test('stick deadzone, analog response, and clamping', () => {
   assert.deepEqual(stickVector(1, 1, 50), { x: 0, y: 0 });
   assert.equal(stickVector(100, 0, 50).x, 1);
@@ -67,4 +67,15 @@ test('reload provides explicit full/busy/started status without restarting repea
   const remaining = w.reloadRemaining;
   assert.equal(w.reload(), 'busy'); assert.equal(w.reloadRemaining, remaining);
   w.tick(2); assert.equal(w.ammo[0], 30); assert.equal(w.reload(), 'full');
+});
+
+test('body turn eases without overshoot, is frame independent and crosses the angle seam', () => {
+  const target = Math.PI / 2, first = followAngle(0, target, 1/60);
+  assert.ok(first > 0 && first < target / 2);
+  let fast = 0, slow = 0;
+  for(let i=0;i<60;i++) fast=followAngle(fast,target,1/60);
+  for(let i=0;i<30;i++) slow=followAngle(slow,target,1/30);
+  assert.ok(Math.abs(fast-slow)<1e-9 && Math.abs(fast-target)<1e-8);
+  const seam = followAngle(179*Math.PI/180,-179*Math.PI/180,1/60);
+  assert.ok(seam > 179*Math.PI/180 && seam < 181*Math.PI/180);
 });
