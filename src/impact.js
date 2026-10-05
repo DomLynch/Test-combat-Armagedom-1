@@ -7,27 +7,27 @@ export class ImpactFeedback {
     this.pistol = pistol;
     this.recoil = this.level === 'off' ? 0 : this.level === 'low' ? 0.4 : 1;
     this.slide = pistol ? this.recoil : 0;
-    this.impulse(-dx, -dz, pistol ? 1.8 : 0.8);
+    this.impulse(-dx, -dz, pistol ? 3 : 1.8);
   }
   hit(killed, dx, dz) {
     this.hold = this.level === 'high' ? killed ? 0.08 : this.pistol ? 0.05 : 0.04 : 0;
     this.lastHold = this.hold;
-    this.impulse(dx, dz, killed ? 4 : 2.2);
+    this.impulse(-dx, -dz, killed ? 8 : 4);
   }
   impulse(dx, dz, strength) {
     if (this.level !== 'high') return;
     this.cameraX += dx * strength; this.cameraZ += dz * strength;
     const length = Math.hypot(this.cameraX, this.cameraZ);
-    if (length > 4) { this.cameraX *= 4 / length; this.cameraZ *= 4 / length; }
+    if (length > 8) { this.cameraX *= 8 / length; this.cameraZ *= 8 / length; }
     this.cameraAge = 0;
   }
   tick(dt) {
     dt = Math.max(0, dt);
     const visualDt = Math.max(0, dt - this.hold);
     this.hold = Math.max(0, this.hold - dt);
-    this.recoil *= Math.exp(-visualDt * (this.pistol ? 20 : 30));
-    this.slide *= Math.exp(-visualDt * 45);
-    this.cameraX *= Math.exp(-dt * 30); this.cameraZ *= Math.exp(-dt * 30); this.cameraAge += dt;
+    this.recoil *= Math.exp(-visualDt * (this.pistol ? 12 : 18));
+    this.slide *= Math.exp(-visualDt * 26);
+    this.cameraX *= Math.exp(-dt * 18); this.cameraZ *= Math.exp(-dt * 18); this.cameraAge += dt;
     if (this.recoil < 0.001) this.recoil = 0;
     if (this.slide < 0.001) this.slide = 0;
     if (Math.hypot(this.cameraX, this.cameraZ) < 0.001) this.cameraX = this.cameraZ = 0;
@@ -44,7 +44,7 @@ export class HitReaction {
   }
   tick(dt) {
     const visualDt = Math.max(0, dt - this.hold); this.hold = Math.max(0, this.hold - dt);
-    this.energy *= Math.exp(-visualDt * (this.killed ? 15 : 22));
+    this.energy *= Math.exp(-visualDt * (this.killed ? 10 : 12));
     if (this.energy < 0.001) this.energy = 0;
   }
 }

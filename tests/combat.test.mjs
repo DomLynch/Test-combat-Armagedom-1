@@ -138,14 +138,14 @@ test('visual hit-stop holds recoil only and consumes the exact remaining time', 
   assert.equal(a.hold, 0.05); a.tick(0.025);
   assert.equal(a.recoil, 1); assert.equal(a.slide, 1); assert.equal(a.hold, 0.025);
   a.tick(0.075); assert.equal(a.hold, 0);
-  assert.ok(Math.abs(a.recoil - Math.exp(-0.05 * 20)) < 1e-9);
+  assert.ok(Math.abs(a.recoil - Math.exp(-0.05 * 12)) < 1e-9);
   const b = new ImpactFeedback(); b.shot(true,0,-1); b.hit(false,0,-1); for(let i=0;i<20;i++)b.tick(0.005);
   assert.ok(Math.abs(a.recoil-b.recoil)<1e-9, 'presentation timing is independent of frame slicing');
   a.hit(true,0,-1); assert.equal(a.hold,0.08);
 });
 test('rapid-fire camera impulses stay bounded and settle exactly to rest', () => {
   const a = new ImpactFeedback();
-  for(let i=0;i<100;i++){a.shot(false,1,0);a.hit(true,1,0);a.tick(0.01);assert.ok(Math.hypot(a.cameraX,a.cameraZ)<=4);}
+  for(let i=0;i<100;i++){a.shot(false,1,0);a.hit(true,1,0);a.tick(0.01);assert.ok(Math.hypot(a.cameraX,a.cameraZ)<=8);}
   a.tick(1);assert.equal(a.cameraX,0);assert.equal(a.cameraZ,0);assert.equal(a.recoil,0);
 });
 test('low/off effects remove camera shake and visual pauses; reset clears residual feedback', () => {
@@ -159,4 +159,12 @@ test('victim flinch has a local hold and stronger kill reaction without moving c
   const a = new HitReaction();a.hit(0,-1,false,'high');a.tick(0.03);assert.equal(a.energy,1);assert.ok(a.hold>0);
   a.tick(0.03);assert.ok(a.energy<1);a.hit(1,0,true,'high');assert.equal(a.hold,0.08);assert.equal(a.killed,true);
   a.hit(1,0,false,'off');assert.equal(a.energy,0);assert.equal(a.hold,0);a.reset();assert.equal(a.energy,0);
+});
+
+
+test('shot and hit impulses reinforce rather than cancel, and High remains readable after 100ms', () => {
+  const a = new ImpactFeedback(); a.shot(false, 0, -1); const first = a.cameraZ; a.hit(false, 0, -1);
+  assert.ok(a.cameraZ > first, 'impact reinforces the firing kick'); a.tick(0.1);
+  assert.ok(a.recoil > 0.3, 'rifle kick is still visible after a short frame gap');
+  assert.ok(Math.hypot(a.cameraX,a.cameraZ)>0.8);
 });

@@ -70,3 +70,5 @@ body { -webkit-touch-callout: none; }
 input, select, textarea { font-size: 16px; }
 #target-marker { position: absolute; top: 0; left: 0; pointer-events: none; color: var(--mint); font-size: 20px; line-height: 1; text-shadow: 0 1px 5px #000; }
 #target-marker.hidden { display: none; }
+
+#hit-marker.impact { font-size: 16px; letter-spacing: 1px; color: #ffd29c; background: #17222bc9; border: 1px solid #ffca85; border-radius: 6px; padding: 4px 7px; }

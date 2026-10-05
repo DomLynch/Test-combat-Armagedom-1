@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-17';
-import { createCombatAudio } from './audio.js?v=combat-17';
-import { installTouchGuards } from './touch.js?v=combat-17';
-import { createInput, bindAction } from './input.js?v=combat-17';
+import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-18';
+import { createCombatAudio } from './audio.js?v=combat-18';
+import { installTouchGuards } from './touch.js?v=combat-18';
+import { createInput, bindAction } from './input.js?v=combat-18';
 
-import { ImpactFeedback, HitReaction } from './impact.js?v=combat-17';
+import { ImpactFeedback, HitReaction } from './impact.js?v=combat-18';
 
 const effects = new ImpactFeedback(matchMedia('(prefers-reduced-motion: reduce)').matches ? 'low' : 'high');
 const $ = id => document.getElementById(id);
@@ -22,7 +22,7 @@ const cameraYaw = Math.PI / 4;
 const cameraOffset = new THREE.Vector3(18, 22, 18);
 const cameraFocus = new THREE.Vector3(0, 0, 3);
 const verticalScale = cameraOffset.y / cameraOffset.length();
-function updateCamera(dt, immediate = false) {
+function updateCamera(dt, immediate = false, shake = true) {
   const alpha = immediate ? 1 : 1 - Math.exp(-dt * 7);
   cameraFocus.x += (player.position.x - cameraFocus.x) * alpha;
   cameraFocus.z += (player.position.z - cameraFocus.z) * alpha;
@@ -30,8 +30,8 @@ function updateCamera(dt, immediate = false) {
   camera.lookAt(cameraFocus);
   // Translate the view only, in CSS-pixel scale; never move HUD controls or logical aim.
   const pixelsToWorld = (camera.top - camera.bottom) / Math.max(1, innerHeight);
-  camera.position.x += effects.cameraX * effects.cameraWave * pixelsToWorld;
-  camera.position.z += effects.cameraZ * effects.cameraWave * pixelsToWorld;
+  camera.position.x += (shake ? 1 : 0) * effects.cameraX * effects.cameraWave * pixelsToWorld;
+  camera.position.z += (shake ? 1 : 0) * effects.cameraZ * effects.cameraWave * pixelsToWorld;
   camera.updateMatrixWorld(true);
 }
 scene.add(new THREE.HemisphereLight('#d5e8ff', '#776e59', 2));
@@ -115,8 +115,8 @@ function burst(x, z, dx, dz, killed) {
   const count = effects.level === 'low' ? 3 : killed ? 12 : 8;
   for (let i = 0; i < count; i++) {
     const p = particles[particleIndex++ % particles.length], a = i / count * Math.PI * 2;
-    p.life = p.total = killed ? 0.32 : 0.22; p.x = x; p.y = 1.25; p.z = z;
-    p.vx = Math.cos(a) * 1.8 + dx; p.vz = Math.sin(a) * 1.8 + dz; p.vy = 1.3 + (i % 3) * 0.7; p.size = killed ? 0.08 : 0.055;
+    p.life = p.total = killed ? 0.42 : 0.3; p.x = x; p.y = 1.25; p.z = z;
+    p.vx = Math.cos(a) * 1.8 + dx; p.vz = Math.sin(a) * 1.8 + dz; p.vy = 1.3 + (i % 3) * 0.7; p.size = effects.level === 'low' ? 0.055 : killed ? 0.16 : 0.12;
   }
 }
 function tickParticles(dt) {
@@ -134,7 +134,7 @@ function tickParticles(dt) {
   if (particleMesh.instanceColor) particleMesh.instanceColor.needsUpdate = true;
 }
 function clearEffects() {
-  effects.reset(); gun.position.copy(gunRest); gun.rotation.x = 0; slide.position.z = slideRestZ;
+  effects.reset(); flashTime = hitMarkerTime = 0; flash.visible = false; gun.position.copy(gunRest); gun.rotation.x = 0; slide.position.z = slideRestZ;
   for (const t of targets) { t.reaction.reset(); t.pivot.rotation.set(0, 0, 0); t.pivot.position.set(0, 0.78, 0); }
   for (const p of particles) p.life = 0; activeParticles = 0; particleMesh.visible = false;
 }
@@ -185,7 +185,7 @@ function setLine(line, x1, y1, z1, x2, y2, z2) {
 }
 function shoot(moving) {
   if (!weapons.fire()) return;
-  shots++; audio.shot(weapons.index === 1); effects.shot(weapons.index === 1, aimX, aimZ); flashTime = 0.045;
+  shots++; audio.shot(weapons.index === 1, effects.level); effects.shot(weapons.index === 1, aimX, aimZ); flashTime = effects.level === 'high' ? 0.06 : 0.045;
   const spread = weapons.weapon.spread * (input.focus ? 0.25 : 1) * (moving ? 2 : 1);
   const direction = Math.atan2(aimX, aimZ) + (Math.random() - 0.5) * spread * 2;
   const dx = Math.sin(direction), dz = Math.cos(direction);
@@ -205,7 +205,9 @@ function shoot(moving) {
     hits++; hitTarget.hp = Math.max(0, hitTarget.hp - weapons.weapon.damage); hitTarget.flash = 0.1;
     if (!hitTarget.hp) { kills++; hitTarget.down = 2; showFeedback('TARGET DOWN'); }
     lastHitX = hitTarget.x; lastHitZ = hitTarget.z;
-    hitMarkerTime = 0.2; $('hit-marker').classList.toggle('kill', !hitTarget.hp); audio.hit(!hitTarget.hp);
+    hitMarkerTime = 0.2; $('hit-marker').classList.toggle('kill', !hitTarget.hp); audio.hit(!hitTarget.hp, effects.level);
+    $('hit-marker').textContent = effects.level === 'high' ? hitTarget.hp ? 'HIT' : 'DOWN' : '×';
+    $('hit-marker').classList.toggle('impact', effects.level === 'high');
     effects.hit(!hitTarget.hp, dx, dz); hitTarget.reaction.hit(dx, dz, !hitTarget.hp, effects.level);
     burst(player.position.x + dx * distance, player.position.z + dz * distance, dx, dz, !hitTarget.hp);
   }
@@ -259,6 +261,8 @@ renderer.setAnimationLoop(time => {
     const stickyActive = assistEnabled && input.touchAim && input.moveHeld && !input.pointerAim;
     let rawAngle = stickyAim.track(Math.atan2(aimOffset.x, aimOffset.y), player.position.x, player.position.z, targets, stickyActive);
     if (input.pointerAim) {
+      // Aim uses the stable camera; cosmetic kick cannot pull the mouse off target.
+      updateCamera(0, false, false);
       pointer.set(input.pointerAim.x / innerWidth * 2 - 1, 1 - input.pointerAim.y / innerHeight * 2); raycaster.setFromCamera(pointer, camera);
       if (raycaster.ray.intersectPlane(aimPlane, mouseWorld)) rawAngle = Math.atan2(mouseWorld.x - player.position.x, mouseWorld.z - player.position.z);
     } else if (moving) {
@@ -287,10 +291,11 @@ renderer.setAnimationLoop(time => {
     player.updateMatrixWorld(true);
     if (input.fires.size || input.firePressed) shoot(moving);
     input.firePressed = false;
-    gun.position.copy(gunRest); gun.position.z += effects.recoil * (weapons.index ? 0.32 : 0.2);
-    gun.rotation.x = effects.recoil * (weapons.index ? 0.12 : 0.06); slide.position.z = slideRestZ + effects.slide * 0.16;
+    gun.position.copy(gunRest); gun.position.z += effects.recoil * (weapons.index ? 0.5 : 0.34);
+    gun.rotation.x = effects.recoil * (weapons.index ? 0.22 : 0.14); slide.position.z = slideRestZ + effects.slide * 0.22;
     updateCamera(0); tickParticles(dt);
     flashTime = Math.max(0, flashTime - dt); flash.visible = flashTime > 0;
+    flash.scale.set(effects.level === 'high' ? 0.4 : 0.25, effects.level === 'high' ? 0.35 : 0.22, effects.level === 'high' ? 0.43 : 0.27);
     const wallX = aimX ? ((aimX > 0 ? 14 : -14) - player.position.x) / aimX : Infinity;
     const wallZ = aimZ ? ((aimZ > 0 ? 14 : -14) - player.position.z) / aimZ : Infinity;
     targetIndex = targetOnRay(player.position.x, player.position.z, aimX, aimZ, targets, Math.min(32, wallX, wallZ));
@@ -314,9 +319,9 @@ renderer.setAnimationLoop(time => {
     for (const target of targets) {
       target.flash = Math.max(0, target.flash - dt);
       target.bodyMaterial.color.set(target.flash ? '#fff3dd' : '#d98e7d'); target.health.scale.x = target.hp / 100;
-      const reaction = target.reaction, lean = reaction.energy * (reaction.killed ? 0.5 : 0.22);
+      const reaction = target.reaction, lean = reaction.energy * (reaction.killed ? 0.9 : 0.45);
       target.pivot.rotation.set(reaction.z * lean, 0, -reaction.x * lean);
-      target.pivot.position.set(reaction.x * reaction.energy * 0.09, 0.78 - (reaction.killed ? (1 - reaction.energy) * 0.5 : 0), reaction.z * reaction.energy * 0.09);
+      target.pivot.position.set(reaction.x * reaction.energy * 0.16, 0.78 - (reaction.killed ? (1 - reaction.energy) * 0.5 : 0), reaction.z * reaction.energy * 0.16);
     }
     for (const tracer of tracers) { tracer.remaining = Math.max(0, tracer.remaining - dt); tracer.line.visible = tracer.remaining > 0; }
     feedbackTime = Math.max(0, feedbackTime - dt); if (!feedbackTime) $('feedback').textContent = '';
