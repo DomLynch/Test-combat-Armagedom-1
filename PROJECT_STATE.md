@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — original walking speed, smooth turns 15, 2026-10-05
+## Current — aim-assist boost +50% / 16, 2026-10-05
+
+Live https://degree-choice.com/?v=combat-16 . Runtime source `99752d63c527373a0cc7b64c30f51d805c6d88ee`, release `combat-16-99752d63-a7b2fc`. Owner liked combat15 movement and requested increasing the previous +30% aim-assist boost to +50% for beginner accessibility. Gain0.3575→0.4125 (combat10 baseline0.275×1.5;15.38% more correction than combat15). Applies equally to rifle/pistol and initial/retained assist; button now says Assist: +50%. Acquisition6°, retention9° (50% wider release), range6 and distance fade unchanged. Partial correction preserves manual offset and deliberate disengagement. Walking6,13% linear stick response, rate10 turn smoothing, full360° body/gun alignment and right FIRE-only retained.
+
+Evidence: thirteen logic tests and local browser `test-combat-armagedom-1-42a5c1177520` exit0; public browser `test-combat-armagedom-1-06ddf8681905` exit0. Close4° error corrects1.65° versus1.43° before; retained gain and falloff checked. Actual touch rifle/pistol correction, retained travel/jitter versus deliberate release/OFF/cancel, original walking speed, eased360° turning, FIRE/reload/taps, gesture guards/audio/portrait/landscape pass with zero errors. Eleven served SHA/no-store checks and final runtime/test input digests match release. Receipts/captures `artifacts/combat-16/`; screenshot reviewed, no new video. Owner accepted combat15 feel; new boost/native Safari zoom remain physical-device checks.
+
+Only prototype symlink swapped; no nginx write/reload. Protected main config/snippet and pinned main page `https://playarmagedom.com/armagedom/preview/three-20261005-037/` matched before/after. Main ARMAGEDOM source/assets/operations untouched by this lane. Rollback `/var/backups/test-combat-armagedom-1/combat-16-99752d63-a7b2fc/`; combat15 preserved. Next: owner phone check of beginner targeting at Assist: +50%.
+
+## Previous — original walking speed, smooth turns 15, 2026-10-05
 
 Live https://degree-choice.com/?v=combat-15 . Runtime source `b6b71012fe4b7b2ce8ff91267ec7599c37e56528`, release `combat-15-b6b71012-fde304`. Owner clarified that walking speed was already right; sensitivity meant turning/look direction. Restored the combat13 walking response: 6 arena units/sec at full stick, 13% neutral zone and linear radial strength. Retained rate10 shortest-arc angular steering to soften brief flicks and direction/aim changes while keeping full 360° travel. Release stops immediately; existing body/gun alignment, desktop controls, assist gain0.3575/acquire6°/release9°/range6 and FIRE-only retained.
 
