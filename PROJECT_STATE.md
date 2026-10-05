@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — stronger assist 11, 2026-10-05
+## Current — sticky assisted aim 12, 2026-10-05
+
+Live https://degree-choice.com/?v=combat-12 . Runtime source `af185f52f7b0afa6b7007df34aa98ccc25a9a99b`, release `combat-12-af185f52-9d652d`. Owner accepted combat11 strength and requested50% greater disengagement tolerance while walking. Added persistent nearby-opponent selection: acquire within6°, retain until9° (50% wider release cone), prefer the retained opponent over competing candidates. While the right aim/fire thumb stays down, compensate player/opponent bearing changes without removing intentional manual aim error. Acquired aim now survives the prior180ms idle-thumb movement takeover. With no retained opponent, original movement-facing handback remains. Deliberate turn past9°, thumb lift/cancel, OFF, reset or dead/out-of-range opponent release retention. Range remains6 units, partial correction gain0.3575; acquisition max2.145°, retained max3.2175° within the wider cone. No auto-fire; visible marker and shots still use actual gun ray.
+
+Evidence: eleven logic tests and local real-touch browser `test-combat-armagedom-1-9df41f14b3a0` exit0. Added state cases for narrow acquisition/wider release, competing target preference, travel compensation preserving manual offset, deliberate turn/death/range/disabled release. Public browser `test-combat-armagedom-1-94aa0240a141` exit0 adds real canceled-touch and OFF checks on acquired opponents; walking with paused thumb beyond180ms and7° jitter retain actual target marker, deliberate swipe/lift resume movement-facing. Prior fire/reload/full-body/assist strength/audio/Safari guards/both viewport checks pass, zero errors. Eleven served SHA/no-store and runtime/logic source inputs match receipt. Captures/receipts under ignored `artifacts/combat-12/`; sticky-walking screenshot visually reviewed; no new video. First upload rejected a README edit during staging and started no test; stable resubmission passed. Physical phone feel/native Safari zoom remain owner acceptance.
+
+Only independent prototype symlink swapped; no nginx write/reload. Protected main config/snippet and pinned main page `https://playarmagedom.com/armagedom/preview/three-20261005-035/` SHA matched before/after; main ARMAGEDOM source/assets/operations untouched by this lane. Rollback `/var/backups/test-combat-armagedom-1/combat-12-af185f52-9d652d/`; combat11 preserved. Next: owner phone aim at a nearby opponent, keep right thumb down while walking, then try small jitter versus a deliberate swipe away/lift.
+
+## Previous — stronger assist 11, 2026-10-05
 
 Live https://degree-choice.com/?v=combat-11 . Runtime source `2ed1fac649df36b532f44f76e937dca373fe2562`, release `combat-11-2ed1fac6-237048`. Owner requested stronger assistance after combat10 felt too subtle. Increased current pistol/rifle touch correction30%:0.275→0.3575 (43% above original0.25); maximum close correction2.145°. Same6° cone, falloff to zero at6 arena units, dead/behind filtering, manual non-accumulating heading, OFF toggle and movement-facing precedence. Previous opponent markers/two-thumb/Safari protections retained.
 
