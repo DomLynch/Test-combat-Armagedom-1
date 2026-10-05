@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, rayCircle } from './combat.js';
-import { createInput } from './input.js';
+import { WeaponState, worldVector, rayCircle } from './combat.js?v=isometric-2';
+import { createInput } from './input.js?v=isometric-2';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');

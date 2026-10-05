@@ -1,4 +1,4 @@
-import { stickVector } from './combat.js';
+import { stickVector } from './combat.js?v=isometric-2';
 export function createInput(canvas, onReload, onSwap) {
   const state = { move: { x: 0, y: 0 }, aim: { x: 0, y: 0 }, keys: new Set(), fires: new Set(), focus: false, pointerAim: null, aimFire: false };
   const resets = [];

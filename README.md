@@ -4,7 +4,7 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://domlynch.github.io/Test-combat-Armagedom-1/)**
+**[Open the mobile demo](https://domlynch.github.io/Test-combat-Armagedom-1/?v=isometric-2)**
 
 - Left stick moves; right stick aims independently. Both sticks follow screen direction through the rotated isometric camera. Facing stays where you last aimed.
 - Hold either FIRE button. Left FIRE supports a third finger while both thumbs use sticks.

@@ -8,7 +8,7 @@ Changed: 45° camera rotation, raised angled viewpoint, closer framing with gent
 
 Evidence: five logic tests PASS (`test-combat-armagedom-1-f15d119e69f6`); final browser PASS (`test-combat-armagedom-1-964eca0f3f71`, exit 0). Verified screen-relative strafing/aim, following camera, real hits, reload, three concurrent fingers, release/cancel, two-thumb mode and both viewport layouts without runtime/console errors. Landscape/portrait screenshots visually reviewed; recovered into `artifacts/isometric/` with exact job manifest/result. The first browser test used wall time that was too short for the VPS software renderer; checks now wait for bounded simulation progress and still require actual movement/shots/hits.
 
-Delivery: update the existing Pages demo only. Physical iPhone/Safari frame pacing and player feel remain unverified; next step is owner landscape play. Initial receipts below are historical.
+Delivery: source `14586015fbfe9707007974aee56975ede92c9247` published by successful Pages run `37264263355`. Final URL/module cache keys use `isometric-2` so prior browser caches cannot retain the old camera; this final import graph also passed the browser checks (`test-combat-armagedom-1-5cb4dbf57ce3`, exit 0; recovered in `artifacts/isometric/final/`). Final publication/runtime HTTP/hash verification is retained in `artifacts/isometric/live-verification.json`. Physical iPhone/Safari frame pacing and player feel remain unverified; next step is owner landscape play. Initial receipts below are historical.
 
 ## Initial prototype receipts
 
