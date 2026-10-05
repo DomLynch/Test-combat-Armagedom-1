@@ -2,6 +2,8 @@
 
 Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close, gently following orthographic camera, a primitive armed humanoid, and seven targets (one moving). No art pipeline, game engine, or bundler.
 
+[Combat18 developer integration guide](docs/COMBAT_HANDOFF.md): what changed, how and why, exact tuning, source map, effects and ARMAGEDOM port acceptance. The separate handoff ZIP includes the frozen runnable code and evidence; this guide does not patch the main game.
+
 ## Play
 
 **[Open the mobile demo](https://degree-choice.com/?v=combat-18)**
