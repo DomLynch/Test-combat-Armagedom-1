@@ -113,10 +113,11 @@ test('sticky assist acquires at 6 degrees, retains to 9, follows travel and rele
 });
 
 
-test('gentle stick has a wider neutral zone, softer midrange and full travel at the edge', () => {
-  assert.deepEqual(stickVector(15,0,100),{x:0,y:0});
+test('turn smoothing preserves the original linear walking response and full travel', () => {
+  assert.deepEqual(stickVector(12,0,100),{x:0,y:0});
   const half=stickVector(50,0,100).x;
-  assert.ok(half>0 && half<(0.5-0.16)/(1-0.16));
+  assert.ok(stickVector(15,0,100).x>0);
+  assert.equal(half,(0.5-0.13)/(1-0.13));
   assert.ok(Math.abs(Math.hypot(...Object.values(stickVector(35.355339,35.355339,100)))-half)<1e-7);
   assert.equal(stickVector(100,0,100).x,1); assert.equal(stickVector(150,0,100).x,1);
 });

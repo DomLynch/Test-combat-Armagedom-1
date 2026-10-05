@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-14';
-import { createCombatAudio } from './audio.js?v=combat-14';
-import { installTouchGuards } from './touch.js?v=combat-14';
-import { createInput, bindAction } from './input.js?v=combat-14';
+import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-15';
+import { createCombatAudio } from './audio.js?v=combat-15';
+import { installTouchGuards } from './touch.js?v=combat-15';
+import { createInput, bindAction } from './input.js?v=combat-15';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -188,14 +188,14 @@ renderer.setAnimationLoop(time => {
     let mx = input.move.x, my = input.move.y;
     if (keys.size) { mx += Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')); my += Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')); }
     const move = worldVector(mx, my, verticalScale, cameraYaw), moving = Math.hypot(move.x, move.z) > 0.01;
-    // Gentle thumb response: steer both travel and targeting through one filter.
+    // Soften angular steering only; preserve the original radial walking response.
     // Releasing the stick still stops travel immediately, without inertia.
     if (input.moveHeld && moving && !input.pointerAim) {
       const desired = Math.atan2(move.x, move.z), strength = Math.hypot(move.x, move.z);
       steeringAngle = steeringAngle === null ? desired : followAngle(steeringAngle, desired, dt, 10);
       move.x = Math.sin(steeringAngle) * strength; move.z = Math.cos(steeringAngle) * strength;
     } else if (!input.moveHeld) steeringAngle = null;
-    const speed = input.focus ? 3 : input.moveHeld ? 4.5 : 6;
+    const speed = input.focus ? 3 : 6;
     player.position.x = THREE.MathUtils.clamp(player.position.x + move.x * dt * speed, -13.1, 13.1);
     player.position.z = THREE.MathUtils.clamp(player.position.z + move.z * dt * speed, -13.1, 13.1);
     if (moving) { leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.36; rightLeg.rotation.x = -leftLeg.rotation.x; } else leftLeg.rotation.x = rightLeg.rotation.x = 0;

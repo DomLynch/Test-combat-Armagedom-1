@@ -35,7 +35,7 @@ try {
   const steer=async(angle,strength=0.42,firing=false)=>{
     const s=await snapshot(), x=Math.sin(angle),z=Math.cos(angle);
     const sx=x*Math.cos(s.cameraYaw)-z*Math.sin(s.cameraYaw), sy=(x*Math.sin(s.cameraYaw)+z*Math.cos(s.cameraYaw))*s.verticalScale;
-    const length=Math.hypot(sx,sy),radius=stickRadius*(0.16+0.84*strength);
+    const length=Math.hypot(sx,sy),radius=stickRadius*(0.13+0.87*strength);
     left=[1,move.x+sx/length*radius,move.y+sy/length*radius];
     await touch('touchMove',firing?[left,[2,fire.x,fire.y]]:[left]);
   };
@@ -72,14 +72,14 @@ try {
   assert.equal(after.x,before.x);assert.equal(after.z,before.z);assert.equal(after.shots,before.shots);assert.ok(gap(heading(after),heading(before))<1e-9);
   results.push('Dragging FIRE or the free right canvas does not steer or move; only held FIRE shoots and release stops it');
   await reset();await touch('touchStart',[[1,move.x+20,move.y]]);await advance(0.1);before=await snapshot();await advance(0.4);after=await snapshot();
-  const gentleSpeed=Math.hypot(after.x-before.x,after.z-before.z)/(after.simTime-before.simTime);
+  const walkingSpeed=Math.hypot(after.x-before.x,after.z-before.z)/(after.simTime-before.simTime);
   const priorSpeed=6*((20/stickRadius-0.13)/(1-0.13));
-  assert.ok(gentleSpeed>0 && gentleSpeed<priorSpeed*0.7,'same physical thumb deflection travels substantially slower');
-  assert.ok(Math.abs(gentleSpeed-4.5*Math.hypot(before.move.x,before.move.y))<1e-6);
+  assert.ok(Math.abs(walkingSpeed-priorSpeed)<1e-6,'same physical thumb deflection restores the original walking speed');
+  assert.ok(Math.abs(walkingSpeed-6*Math.hypot(before.move.x,before.move.y))<1e-6);
   await touch('touchMove',[[1,move.x+stickRadius*1.1,move.y]]);await advance(0.1);before=await snapshot();await advance(0.3);after=await snapshot();
-  assert.ok(Math.abs(Math.hypot(after.x-before.x,after.z-before.z)/(after.simTime-before.simTime)-4.5)<1e-6,'full stick travels at 4.5 rather than 6 units per second');
+  assert.ok(Math.abs(Math.hypot(after.x-before.x,after.z-before.z)/(after.simTime-before.simTime)-6)<1e-6,'full stick restores 6 units per second');
   await touch('touchEnd',[]);await advance(0.08);before=await snapshot();await advance(0.2);after=await snapshot();assert.equal(after.x,before.x);assert.equal(after.z,before.z);
-  results.push('Gentle stick reduces speed at identical physical deflection, caps full travel 25% lower, and stops without inertia');
+  results.push('Original walking response and 6-unit full-stick speed restored; release stops without inertia');
   await reset();await touch('touchStart',[[1,move.x,move.y]]);
   for(const degrees of [0,37,90,133,180,225,270,315,360]){
     const a=degrees*Math.PI/180;await steer(a);await advance(0.5);before=await snapshot();await advance(0.25);after=await snapshot();aligned(after);
@@ -94,16 +94,17 @@ try {
   await touch('touchEnd',[[2,fire.x,fire.y]]);await advance(0.08);after=await snapshot();assert.equal(after.fireCount,0);assert.ok(Math.hypot(after.move.x,after.move.y)>0);
   await touch('touchEnd',[]);await advance(0.35);before=await snapshot();await advance(0.2);after=await snapshot();assert.equal(after.x,before.x);assert.equal(after.z,before.z);assert.ok(gap(heading(after),heading(before))<1e-9);
   results.push('Left stick turns full body through intermediate/360-degree travel; it keeps steering while FIRE is held, independently releases and stops');
-  await reset();await walkTo(0,-5);await page.locator('#assist').click();assert.equal((await snapshot()).assistEnabled,true);
+  // Keep room ahead while the real-time renderer captures and toggles settings.
+  await reset();await walkTo(0,-4);await page.locator('#assist').click();assert.equal((await snapshot()).assistEnabled,true);
   before=await snapshot();const bearing=Math.atan2(-before.x,-8-before.z),leftAngle=bearing+4*Math.PI/180;
-  await touch('touchStart',[[1,move.x,move.y]]);await steer(leftAngle,0.25);await advance(0.1);before=await snapshot();
+  await touch('touchStart',[[1,move.x,move.y]]);await steer(leftAngle,0.16);await advance(0.1);before=await snapshot();
   assert.equal(before.assistTarget,0);assert.equal(before.selectedTarget,0);
   await advance(0.5);after=await snapshot();assert.ok(Math.hypot(after.x-before.x,after.z-before.z)>0.3);assert.equal(after.assistTarget,0);assert.equal(after.selectedTarget,0);
-  await steer(leftAngle+3*Math.PI/180,0.25);await advance(0.25);after=await snapshot();assert.equal(after.assistTarget,0,'7-degree offset stays retained by left targeting');assert.equal(after.selectedTarget,0);
+  await steer(leftAngle+3*Math.PI/180,0.16);await advance(0.25);after=await snapshot();assert.equal(after.assistTarget,0,'7-degree offset stays retained by left targeting');assert.equal(after.selectedTarget,0);
   await page.screenshot({path:'artifacts/sticky-left-walking.png'});
   await touch('touchStart',[left,[2,fire.x,fire.y]]);await advance(0.08);assert.equal((await snapshot()).assistTarget,0);
   await touch('touchEnd',[[2,fire.x,fire.y]]);await advance(0.08);after=await snapshot();assert.equal(after.fireCount,0);assert.equal(after.assistTarget,0,'releasing FIRE cannot disengage left-stick assistance');
-  await steer(leftAngle+25*Math.PI/180,0.25);await advance(0.25);assert.equal((await snapshot()).assistTarget,null,'deliberate left turn releases');
+  await steer(leftAngle+25*Math.PI/180,0.16);await advance(0.25);assert.equal((await snapshot()).assistTarget,null,'deliberate left turn releases');
   await touch('touchEnd',[]);before=await snapshot();
   await touch('touchStart',[[1,move.x,move.y]]);await steer(Math.atan2(-before.x,-8-before.z)+4*Math.PI/180,0.16);await advance(0.1);assert.equal((await snapshot()).assistTarget,0);
   await touch('touchMove',[[1,move.x,move.y]]);await advance(0.08);before=await snapshot();

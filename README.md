@@ -4,11 +4,11 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-14)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-15)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
-- Left stick now has a gentler response: 25% lower maximum walking speed, a 16% neutral zone and a curved response for finer slow movement. A short turn filter softens sudden direction changes; releasing the stick still stops travel immediately. It moves and faces the whole body through 360°. Its direction acquires assisted nearby opponents; small direction changes retain them, while a deliberate turn releases them. Stopping keeps the last facing.
+- Walking retains its original speed, 13% neutral zone and linear radial stick response. A short angular turn filter softens sudden direction/aim changes without reducing walking speed; releasing the stick still stops travel immediately. It moves and faces the whole body through 360°. Its direction acquires assisted nearby opponents; small direction changes retain them, while a deliberate turn releases them. Stopping keeps the last facing.
 - Hold the right **FIRE** button to shoot. Dragging it never changes movement or aim. Right-side canvas touches have no targeting role, leaving that area available for future action buttons.
 - The targeting ring and arrow sit on the first living opponent in the actual line of fire, follow its movement and release when it leaves that line or dies. Aim correction remains light; this selection does not auto-fire or hard-lock the gun.
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
