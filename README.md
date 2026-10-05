@@ -4,7 +4,9 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://domlynch.github.io/Test-combat-Armagedom-1/?v=isometric-2)**
+**[Open the mobile demo](https://degree-choice.com/?v=direct-3)**
+
+Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
 - Left stick moves; right stick aims independently. Both sticks follow screen direction through the rotated isometric camera. Facing stays where you last aimed.
 - Hold either FIRE button. Left FIRE supports a third finger while both thumbs use sticks.
@@ -33,3 +35,7 @@ ARMAGEDOM was inspected read-only for angled-camera and lit-actor visual inspira
 `npm test` checks deadzone, normalized motion, hitscan, firing cadence, magazines/reload and swap. `npm run test:browser` performs real Chromium mouse and simultaneous multi-touch checks; run on the VPS through the workspace runner. Browser screenshots land in ignored `artifacts/`. Physical iPhone/Safari feel requires device play.
 
 On the workspace VPS, use `CHROMIUM_PATH=/opt/frankendom-shadow/ms-playwright/chromium-1234/chrome-linux64/chrome npm run test:browser` to reuse the installed browser. Else install the pinned Playwright browser with `npx playwright install chromium`.
+
+## Degree Choice hosting
+
+The prototype has an independent static root at `/var/www/test-combat-armagedom-1/current`, pointing to a hash-pinned release. `ops/degree-choice.conf` serves only Degree Choice and uses its existing TLS/ACME setup. Old `/armagedom` routes return 410 on this domain. `ops/activate-degree-choice.py` guards the inspected Degree Choice config, checks payload hashes, tests nginx, reloads, and verifies protected main-game config hashes and its pinned page before/after; rollback restores only this domain's config and prototype pointer. Private backups are under `/var/backups/test-combat-armagedom-1/`. It never edits `playarmagedom.com` configuration, shared game snippets, or game assets.

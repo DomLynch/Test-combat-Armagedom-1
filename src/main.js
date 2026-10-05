@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, rayCircle } from './combat.js?v=isometric-2';
-import { createInput } from './input.js?v=isometric-2';
+import { WeaponState, worldVector, rayCircle } from './combat.js?v=direct-3';
+import { createInput } from './input.js?v=direct-3';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power' }); }
-catch { $('welcome').innerHTML = '<div class="welcome-card"><h1>WebGL unavailable</h1><p>Open this link in Safari or Chrome with hardware acceleration enabled.</p></div>'; throw new Error('WebGL unavailable'); }
+catch { $('welcome').classList.remove('hidden'); $('welcome').innerHTML = '<div class="welcome-card"><h1>WebGL unavailable</h1><p>Open this link in Safari or Chrome with hardware acceleration enabled.</p></div>'; throw new Error('WebGL unavailable'); }
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -88,15 +88,14 @@ const tracers = Array.from({ length: 16 }, () => {
   const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: '#ffe3a2' })); line.visible = false; scene.add(line);
   return { line, remaining: 0 };
 });
-let tracerIndex = 0, started = false, angle = 0, aimX = 0, aimZ = -1, kick = 0, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
+let tracerIndex = 0, started = true, angle = 0, aimX = 0, aimZ = -1, kick = 0, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
 const weapons = new WeaponState();
 function reload() { if (started) weapons.reload(); }
 function swap() { if (!started) return; weapons.swap(); barrel.scale.z = weapons.index ? 0.5 : 0.95; barrel.position.z = weapons.index ? -0.6 : -0.76; }
 const input = createInput(canvas, reload, swap);
 $('reload').onclick = reload; $('swap').onclick = swap;
 $('mode').onclick = () => { input.aimFire = !input.aimFire; $('mode').textContent = `Aim + fire: ${input.aimFire ? 'ON' : 'OFF'}`; $('mode').setAttribute('aria-pressed', String(input.aimFire)); };
-$('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch { showFeedback('Use landscape for more room'); } };
-$('start').onclick = () => { started = true; $('welcome').classList.add('hidden'); input.clear(); };
+$('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
   input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; angle = 0; kick = flashTime = 0;
   barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }

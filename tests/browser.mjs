@@ -15,7 +15,12 @@ try {
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:4187', { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__combat);
-  await page.locator('#start').click();
+  await page.waitForFunction(() => window.__combat.snapshot().started);
+  assert.equal(await page.locator('#welcome').isVisible(), false, 'no startup popup');
+  assert.equal(await page.locator('iframe').count(), 0, 'direct document, no iframe');
+  const gameBounds = await page.locator('#game').boundingBox();
+  assert.equal(gameBounds.width, 844); assert.equal(gameBounds.height, 390);
+  results.push('Starts directly with viewport-filling canvas and no startup popup or iframe');
   const snapshot = () => page.evaluate(() => window.__combat.snapshot());
   const advance = async seconds => {
     const until = (await snapshot()).simTime + seconds;
