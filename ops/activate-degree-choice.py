@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 
 stage = Path(sys.argv[1]).resolve()
@@ -58,9 +59,14 @@ try:
     assert before == after, 'Protected main-game config changed during switch'
     main_after = fetch(main_before['url'])
     assert main_before == main_after, 'Pinned main-game page changed during switch'
-    root = fetch('https://degree-choice.com/?v=direct-3')
-    assert root['status'] == 200 and root['url'].startswith('https://degree-choice.com/'), 'Prototype root did not serve directly'
-    assert root['sha256'] == manifest['files_sha256']['index.html']
+    # Reload returns after signalling the master; workers may still serve the old vhost briefly.
+    deadline = time.monotonic() + 10
+    while True:
+        root = fetch('https://degree-choice.com/?v=direct-3')
+        if root['status'] == 200 and root['url'].startswith('https://degree-choice.com/') and root['sha256'] == manifest['files_sha256']['index.html']:
+            break
+        assert time.monotonic() < deadline, f'Prototype root did not converge: {root}'
+        time.sleep(0.25)
 except Exception:
     # Restore only the Degree Choice host and prototype symlink.
     shutil.copy2(backup / 'degree-choice.conf', config)

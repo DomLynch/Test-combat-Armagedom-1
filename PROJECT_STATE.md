@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — isometric revision 02, 2026-10-05
+## Current — independent Degree Choice delivery, 2026-10-05
+
+Owner allocated `degree-choice.com` to this prototype and explicitly prohibited touching the main game. Live https://degree-choice.com/?v=direct-3 serves directly with no startup popup/iframe; canvas fills the viewport. App source `e1ceb82e`, release `direct-3-e1ceb82e-1ab526`, independent root `/var/www/test-combat-armagedom-1/current`. Existing Degree Choice TLS/ACME retained; only that vhost was replaced. Old `/armagedom` routes now 410; no main-game redirects/includes/assets on this host. HTTP/www canonicalise to prototype HTTPS. Home-screen manifest provided; OS/browser full-screen acceptance remains a phone check.
+
+Nine runtime files verified by SHA-256/MIME/no-store over public HTTPS; retired paths 410, absent paths strict404. Live browser job `test-combat-armagedom-1-5ce9bd99a38c` exit 0: immediate start, viewport fill, hits/reload, concurrent movement/aim/fire, cancellation and both orientations; no runtime/console errors. `/etc/nginx/sites-available/playarmagedom.conf`, its preview snippet, and the exact main028 HTML hashes matched before/after. No main-game files or configuration edited. Receipts: local ignored `artifacts/degree-choice/`; private rollback `/var/backups/test-combat-armagedom-1/direct-3-e1ceb82e-1ab526/`. Initial activation verification ran before nginx workers had finished reloading and restored only Degree Choice; bounded convergence check fixed the deployment race.
+
+Next: owner phone play using the query-bearing link to bypass the former cached301. Future prototype publishing changes only this isolated root/Degree Choice vhost. Main game and shared snippets remain outside this lane.
+
+## Previous — isometric revision 02, 2026-10-05
 
 Owner corrected the visual target to a Diablo/Path of Exile style 3D isometric presentation. ARMAGEDOM is a read-only visual reference; combat/input/targeting remain independent and authored from scratch here. No donor code or assets imported, no ARMAGEDOM files written.
 
