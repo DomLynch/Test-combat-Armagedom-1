@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — light assist +10% 10, 2026-10-05
+## Current — stronger assist 11, 2026-10-05
+
+Live https://degree-choice.com/?v=combat-11 . Runtime source `2ed1fac649df36b532f44f76e937dca373fe2562`, release `combat-11-2ed1fac6-237048`. Owner requested stronger assistance after combat10 felt too subtle. Increased current pistol/rifle touch correction30%:0.275→0.3575 (43% above original0.25); maximum close correction2.145°. Same6° cone, falloff to zero at6 arena units, dead/behind filtering, manual non-accumulating heading, OFF toggle and movement-facing precedence. Previous opponent markers/two-thumb/Safari protections retained.
+
+Evidence: ten logic tests `test-combat-armagedom-1-2fe13cd0cc00` exit0; public browser `test-combat-armagedom-1-5218130af719` exit0. Actual rifle/pistol corrections match the stronger setting; OFF removes correction. Existing real touch, body movement/turning, shooting/reload, targets, gesture guards, audio and both viewport checks pass; zero errors. Eleven served SHA/no-store and tested runtime inputs match release. Receipts/captures under ignored `artifacts/combat-11/`; no new video. Phone targeting feel/native Safari zoom acceptance remain owner checks.
+
+Only prototype symlink swapped; no nginx write/reload. Protected main config/snippet and pinned033 page SHA matched before/after. Main ARMAGEDOM source/assets/operations untouched by this lane. Rollback `/var/backups/test-combat-armagedom-1/combat-11-2ed1fac6-237048/`; combat10 preserved. Next: owner pistol/rifle phone targeting check.
+
+## Previous — light assist +10% 10, 2026-10-05
 
 Live https://degree-choice.com/?v=combat-10 . Runtime source `6e2f7fb5`, release `combat-10-6e2f7fb5-3e5dac`. Owner requested a slight increase for easier pistol/rifle targeting. Shared touch-assist correction coefficient rises from0.25 to0.275 (+10%); close-range maximum is1.65° rather than1.5°. Same6° acquisition cone, falloff to zero at6 arena units, dead/behind filtering, non-accumulating manual heading, OFF switch and movement-facing precedence retained. No hard target lock added. Opponent markers and Safari guards unchanged apart from module cache version/header10.
 
