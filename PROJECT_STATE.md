@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — independent Degree Choice delivery, 2026-10-05
+## Current — two-thumb swipe controls, 2026-10-05
+
+Live https://degree-choice.com/?v=thumb-4 . Runtime source `5c9ddc02a7fcaa79e2c0a4a6a7e7e0f22a4d16e1`, isolated release `thumb-4-5c9ddc02-b0c7c0`. Left thumb uses the movement stick; right thumb swipes the free right half to move the reticle and gun aim. Right FIRE holds shooting and accepts the same aiming drags, including beyond its boundary. Exactly two fingers can move, aim and shoot. Lifting/replanting retains aim without a jump; free look never fires. Removed the right joystick, upper-left fire, auto-fire toggle and mobile focus hold. Isometric camera orientation and independent combat remain unchanged.
+
+Evidence: six logic tests PASS in `test-combat-armagedom-1-6277428ee6ea`; its subsequent browser portion failed because the test fixture ended the left finger instead of the right. Pointer-event trace localized the fixture error. Corrected browser PASS `test-combat-armagedom-1-8923edbb791e`, exit0; public HTTPS browser PASS `test-combat-armagedom-1-cee570e11f68`, exit0. Checks require two concurrent fingers, continuous movement across right-thumb release/replant, free swipe without firing, fire-drag outside button, retained aim, repeated relative swipes, real mobile hits, cancellation/resize clearing, reload and both viewport layouts; no runtime/console errors. Landscape/portrait captures reviewed. Nine public runtime SHA-256/MIME/no-store checks and retired410/strict404 routes PASS. Receipts/captures: ignored `artifacts/thumb-4/`.
+
+Delivery changed only the prototype release symlink. Degree Choice config matched byte-for-byte, so no nginx config write or reload occurred. Protected main-game config/snippet and exact028 public HTML hashes matched before/after. Private rollback: `/var/backups/test-combat-armagedom-1/thumb-4-5c9ddc02-b0c7c0/`; previous prototype release preserved. No ARMAGEDOM source/config/assets changed. Next acceptance: owner iPhone/Safari play and swipe sensitivity/button comfort; browser evidence does not prove device feel.
+
+## Previous — independent Degree Choice delivery, 2026-10-05
 
 Owner allocated `degree-choice.com` to this prototype and explicitly prohibited touching the main game. Live https://degree-choice.com/?v=direct-3 serves directly with no startup popup/iframe; canvas fills the viewport. App source `e1ceb82e`, release `direct-3-e1ceb82e-1ab526`, independent root `/var/www/test-combat-armagedom-1/current`. Existing Degree Choice TLS/ACME retained; only that vhost was replaced. Old `/armagedom` routes now 410; no main-game redirects/includes/assets on this host. HTTP/www canonicalise to prototype HTTPS. Home-screen manifest provided; OS/browser full-screen acceptance remains a phone check.
 
