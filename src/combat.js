@@ -38,7 +38,7 @@ export function aimAssist(angle, ox, oz, targets) {
     const delta = Math.atan2(Math.sin(Math.atan2(t.x - ox, t.z - oz) - angle), Math.cos(Math.atan2(t.x - ox, t.z - oz) - angle));
     if (Math.abs(delta) >= best) continue;
     best = Math.abs(delta);
-    correction = delta * 0.3575 * Math.max(0, Math.min(1, (6 - distance) / 4));
+    correction = delta * 0.4125 * Math.max(0, Math.min(1, (6 - distance) / 4));
   }
   return correction;
 }
@@ -68,7 +68,7 @@ export class StickyAim {
       const delta = Math.atan2(Math.sin(bearing - angle), Math.cos(bearing - angle));
       if (Math.abs(delta) < 9 * Math.PI / 180) {
         this.bearing = bearing;
-        this.correction = delta * 0.3575 * Math.max(0, Math.min(1, (6 - Math.hypot(t.x - ox, t.z - oz)) / 4));
+        this.correction = delta * 0.4125 * Math.max(0, Math.min(1, (6 - Math.hypot(t.x - ox, t.z - oz)) / 4));
         return this.correction;
       }
     }
@@ -81,7 +81,7 @@ export class StickyAim {
       const delta = Math.atan2(Math.sin(bearing - angle), Math.cos(bearing - angle));
       if (Math.abs(delta) >= best) continue;
       best = Math.abs(delta); this.target = i; this.bearing = bearing;
-      this.correction = delta * 0.3575 * Math.max(0, Math.min(1, (6 - distance) / 4));
+      this.correction = delta * 0.4125 * Math.max(0, Math.min(1, (6 - distance) / 4));
     }
     return this.correction;
   }

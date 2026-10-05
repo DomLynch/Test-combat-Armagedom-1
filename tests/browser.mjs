@@ -109,7 +109,7 @@ try {
   await touch('touchStart',[[1,move.x,move.y]]);await steer(Math.atan2(-before.x,-8-before.z)+4*Math.PI/180,0.16);await advance(0.1);assert.equal((await snapshot()).assistTarget,0);
   await touch('touchMove',[[1,move.x,move.y]]);await advance(0.08);before=await snapshot();
   const delta=Math.atan2(Math.sin(Math.atan2(-before.x,-8-before.z)-heading(before)),Math.cos(Math.atan2(-before.x,-8-before.z)-heading(before)));
-  const range=Math.hypot(before.x,before.z+8);const expected=delta*0.3575*Math.max(0,Math.min(1,(6-range)/4));
+  const range=Math.hypot(before.x,before.z+8);const expected=delta*0.4125*Math.max(0,Math.min(1,(6-range)/4));
   assert.ok(Math.abs(before.assistCorrection-expected)<1e-8,'left assist keeps accepted strength');
   await page.locator('#swap').click();await advance(0.08);after=await snapshot();assert.equal(after.weapon,'PISTOL');assert.ok(Math.abs(after.assistCorrection-expected)<1e-8);
   await page.locator('#assist').click();await advance(0.08);after=await snapshot();assert.equal(after.assistCorrection,0);assert.equal(after.assistTarget,null);

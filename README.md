@@ -4,7 +4,7 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-15)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-16)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
@@ -14,7 +14,7 @@ Opens straight into the range with a viewport-filling canvas and no start popup 
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
 - Left-stick movement alone never fires. Feet, hips, torso and gun share one smoothed heading. Shots follow the visible gun direction. The isometric camera keeps its fixed angle and follows the player.
 - RIFLE/PISTOL switches weapon; RELOAD responds on contact and refills with unlimited reserve. Repeated taps retain reload progress; a full magazine gives explicit feedback.
-- Assist: Light gives touch aim a small nudge only within six degrees of a nearby living target. Initial correction is at most 2.145° up close (30% stronger than combat 10); retained correction can reach 3.2175° within the wider release cone. Both fade to zero at six arena units. Once acquired, the target stays assisted within a 9° release cone (50% wider). Keeping the left thumb down follows bearing changes while walking, preserving your manual aim offset. Steer beyond the release cone or lift the left thumb to disengage; dead/out-of-range targets and Assist: OFF clear retention. Toggle Assist: OFF for fully manual aim.
+- Assist: +50% gives touch aim a small nudge only within six degrees of a nearby living target. Initial correction is at most 2.475° up close (50% stronger than combat 10); retained correction can reach 3.7125° within the wider release cone. Both fade to zero at six arena units. Once acquired, the target stays assisted within a 9° release cone (50% wider). Keeping the left thumb down follows bearing changes while walking, preserving your manual aim offset. Steer beyond the release cone or lift the left thumb to disengage; dead/out-of-range targets and Assist: OFF clear retention. Toggle Assist: OFF for fully manual aim.
 - Desktop: WASD/arrows, mouse aim, left mouse/Space fire, right mouse focus, R reload, Q switch.
 - Landscape recommended; safe-area padding and portrait layout included.
 

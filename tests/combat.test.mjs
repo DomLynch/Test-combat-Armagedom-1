@@ -54,7 +54,7 @@ test('light assist fades with range, ignores distant/dead/behind targets and nev
   const angle = 0, offset = 4 * Math.PI / 180;
   const target = distance => [{ x: Math.sin(offset) * distance, z: Math.cos(offset) * distance, hp: 100 }];
   const close = aimAssist(angle, 0, 0, target(2));
-  assert.ok(Math.abs(close - 1.43 * Math.PI / 180) < 1e-9, '30% more correction than the previous 1.1-degree nudge');
+  assert.ok(Math.abs(close - 1.65 * Math.PI / 180) < 1e-9, '50% more correction than the combat10 1.1-degree nudge');
   assert.ok(Math.abs(aimAssist(angle, 0, 0, target(4)) - close / 2) < 1e-9);
   assert.ok(Math.abs(aimAssist(angle, 0, 0, target(6))) < 1e-12, 'zero pull at the range boundary within floating-point precision');
   const outside = 6.01 * Math.PI / 180;
@@ -101,6 +101,7 @@ test('sticky assist acquires at 6 degrees, retains to 9, follows travel and rele
   a.update(4 * rad, 0, 0, targets, true); assert.equal(a.target, 1);
   a.reset(); a.update(4 * rad, 0, 0, targets.slice(0,1), true); assert.equal(a.target, 0);
   a.update(8.9 * rad, 0, 0, targets, true); assert.equal(a.target, 0, 'nearer competing bearing cannot steal retained target');
+  assert.ok(Math.abs(a.correction + 8.9 * rad * 0.4125 * 0.75) < 1e-9, 'retained correction uses the same +50% boost and distance fade');
   assert.ok(Math.abs(a.correction) < 8.9 * rad, 'partial assist preserves manual error');
   const tracked = a.track(8.9 * rad, 1, 0, targets, true);
   assert.ok(Math.abs(tracked - (Math.atan2(-1,3) + 8.9 * rad)) < 1e-9, 'walking preserves intentional offset');

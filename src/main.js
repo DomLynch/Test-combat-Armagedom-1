@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-15';
-import { createCombatAudio } from './audio.js?v=combat-15';
-import { installTouchGuards } from './touch.js?v=combat-15';
-import { createInput, bindAction } from './input.js?v=combat-15';
+import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-16';
+import { createCombatAudio } from './audio.js?v=combat-16';
+import { installTouchGuards } from './touch.js?v=combat-16';
+import { createInput, bindAction } from './input.js?v=combat-16';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -108,7 +108,7 @@ function reload() {
 function swap() { if (!started) return; weapons.swap(); barrel.scale.z = weapons.index ? 0.5 : 0.95; barrel.position.z = weapons.index ? -0.6 : -0.76; }
 const input = createInput(canvas, reload, swap);
 bindAction($('reload'), reload); bindAction($('swap'), swap);
-$('assist').onclick = () => { assistEnabled = !assistEnabled; stickyAim.reset(); $('assist').textContent = assistEnabled ? 'Assist: Light' : 'Assist: OFF'; $('assist').setAttribute('aria-pressed', String(assistEnabled)); };
+$('assist').onclick = () => { assistEnabled = !assistEnabled; stickyAim.reset(); $('assist').textContent = assistEnabled ? 'Assist: +50%' : 'Assist: OFF'; $('assist').setAttribute('aria-pressed', String(assistEnabled)); };
 $('sound').onclick = () => { soundEnabled = !soundEnabled; audio.setEnabled(soundEnabled); $('sound').textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`; $('sound').setAttribute('aria-pressed', String(soundEnabled)); };
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
