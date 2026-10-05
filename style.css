@@ -38,6 +38,7 @@ p { color: #b4c3c7; font-size: 14px; line-height: 1.65; }
   .fire-right { bottom: calc(30px + var(--safe-bottom)); width: 96px; height: 96px; }
   #look-hint { bottom: calc(146px + var(--safe-bottom)); }
   .options { top: 73px; }
+  #feedback { top: 34%; }
   #hint { bottom: calc(82px + var(--safe-bottom)); font-size: 10px; }
 }
 @media (max-width: 580px) {
