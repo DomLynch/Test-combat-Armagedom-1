@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#13191e">
+  <title>ARMAGEDOM · Combat lab</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body>
+  <canvas id="game" aria-label="Top-down weapon test arena"></canvas>
+  <header>
+    <div><strong>COMBAT LAB</strong><small>ARMAGEDOM / 01</small></div>
+    <div id="status" aria-live="polite">RIFLE · 30 / 30</div>
+    <button id="reset">Reset</button>
+  </header>
+  <div id="stats">Hits 0 · Shots 0 · Accuracy —</div>
+  <div id="feedback" aria-live="polite"></div>
+  <button class="fire fire-left" id="fire-left" aria-label="Left fire button">FIRE</button>
+  <div class="options"><button id="mode" aria-pressed="false">Aim + fire: OFF</button><button id="fullscreen">Full screen</button></div>
+  <div class="stick" id="move" role="group" aria-label="Movement joystick"><span class="stick-label">MOVE</span><div class="knob"></div></div>
+  <div class="stick" id="aim" role="group" aria-label="Aim joystick"><span class="stick-label">AIM</span><div class="knob"></div></div>
+  <button class="fire fire-right" id="fire-right" aria-label="Right fire button">FIRE</button>
+  <div class="actions"><button id="reload">RELOAD</button><button id="swap">PISTOL</button><button id="focus" aria-label="Hold for precision aim">FOCUS</button></div>
+  <div id="hint">Left thumb moves · Right thumb aims · Hold FIRE<br>Landscape recommended · WASD + mouse on desktop</div>
+  <div id="welcome">
+    <div class="welcome-card">
+      <span class="eyebrow">ARMAGEDOM / INPUT PROTOTYPE</span>
+      <h1>Movement.<br>Aim. Fire.</h1>
+      <p>A bare arena to test how the weapons feel.</p>
+      <p>Left stick: move. Right stick: aim.<br>Hold either FIRE button to shoot.<br>Use Aim + fire for two-thumb play.</p>
+      <button id="start">ENTER RANGE →</button>
+      <small>Rifle + pistol · Reload · Hold FOCUS for precision</small>
+    </div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
