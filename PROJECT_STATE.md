@@ -1,6 +1,14 @@
 # Combat prototype state
 
-## Current — two-thumb swipe controls, 2026-10-05
+## Current — combat improvements 05, 2026-10-05
+
+Ready for owner phone check: https://degree-choice.com/?v=combat-5 . Runtime source `f31d527b328a875e6cb93a7c019da7f41642324c`, independent release `combat-5-f31d527b-afb9bd`. Close hitscan starts at the player so targets before the muzzle register; close tracers stop at their hit. Swipe cursor minimum radius3 prevents the unstable near-player turn; Aim cycles Low/Normal/High sensitivity. An edge arrow preserves off-screen aim feedback. Hits flash a reticle marker, procedural shot/impact tones unlock on first gesture with Sound mute, and FIRE shows reload countdown/progress ring. Fixed isometric camera and two-thumb free-look/fire-drag retained. Aim overlays are contained so rotation does not shrink the mobile viewport.
+
+Evidence: seven logic tests PASS (TAP portion in `test-combat-armagedom-1-8fad08facfb2`; its browser portion failed on a test swipe sign, corrected separately). Final local browser `test-combat-armagedom-1-d57612231296`, exit0. Public browser and 87s recorded playthrough `test-combat-armagedom-1-71fdddda3576`, exit0: two actual touch pointers, real hits/reload/fire-drag/release/resize; original0.623-unit case now7 shots/4 hits/HP0, original14.4px swipe turns~0 degrees, edge arrow remains visible. Sensitivity and gesture-unlocked audio/mute checks PASS; full viewport in both orientations, zero runtime/console errors. Capture video and screenshots visually reviewed. Ten public runtime SHA-256/header/cache and retired410/404 checks PASS. Receipts/captures: ignored `artifacts/combat-5/`; video `live/play-review/playthrough.mp4`.
+
+Deployment only swapped the independent prototype symlink. Degree Choice config unchanged byte-for-byte, no nginx config write/reload. Protected main config/snippet and pinned main030 page SHA matched before/after. Main runtime/operations remain outside this task. Rollback `/var/backups/test-combat-armagedom-1/combat-5-f31d527b-afb9bd/`; prior release preserved. Next: owner Safari/iPhone play for sensitivity, sound and thumb comfort; headless capture does not establish phone FPS/ergonomics. Earlier review/failures below are historical, with current fixes above.
+
+## Previous — two-thumb swipe controls, 2026-10-05
 
 Live https://degree-choice.com/?v=thumb-4 . Runtime source `5c9ddc02a7fcaa79e2c0a4a6a7e7e0f22a4d16e1`, isolated release `thumb-4-5c9ddc02-b0c7c0`. Left thumb uses the movement stick; right thumb swipes the free right half to move the reticle and gun aim. Right FIRE holds shooting and accepts the same aiming drags, including beyond its boundary. Exactly two fingers can move, aim and shoot. Lifting/replanting retains aim without a jump; free look never fires. Removed the right joystick, upper-left fire, auto-fire toggle and mobile focus hold. Isometric camera orientation and independent combat remain unchanged.
 
@@ -8,7 +16,7 @@ Evidence: six logic tests PASS in `test-combat-armagedom-1-6277428ee6ea`; its su
 
 Delivery changed only the prototype release symlink. Degree Choice config matched byte-for-byte, so no nginx config write or reload occurred. Protected main-game config/snippet and exact028 public HTML hashes matched before/after. Private rollback: `/var/backups/test-combat-armagedom-1/thumb-4-5c9ddc02-b0c7c0/`; previous prototype release preserved. No ARMAGEDOM source/config/assets changed. Next acceptance: owner iPhone/Safari play and swipe sensitivity/button comfort; browser evidence does not prove device feel.
 
-## Recorded headless play review — 2026-10-05
+## Previous recorded headless play review — 2026-10-05
 
 Review only, same live runtime `5c9ddc02` / `thumb-4-5c9ddc02-b0c7c0`. Capture job `test-combat-armagedom-1-6b9806fe16c6` exit0: 80s of scripted two-touch movement, fire-drag, tracking, reload and swapping; zero runtime/console errors. Controlled follow-up `test-combat-armagedom-1-4f405169283e` exit0: at0.622 arena units, seven shots missed and dummy HP stayed100; at3.019 units shots hit. Recommended first fix: close-range hitscan currently starts beyond the nearby dummy. Also reproduced ~180-degree turn from14.4px near-player swipe, and reticle50px above viewport after long upward swipes. Next design refinements: consistent aim gain, visible edge aiming, light hit/sound/reload feedback. These remain proposals; no runtime changes/deployment performed. Local artifacts/video/report/scripts/receipts: `artifacts/play-review/` and `artifacts/play-review-close/`; reusable capture harness `tests/play-review.mjs`. Headless capture does not prove phone frame pacing, comfort or human accuracy. Earlier approach stopped at1.067 units and hit; only the controlled follow-up is used for the near-miss conclusion.
 
