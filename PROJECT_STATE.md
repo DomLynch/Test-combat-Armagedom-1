@@ -1,6 +1,16 @@
 # Combat prototype state
 
-## Current — combat improvements 05, 2026-10-05
+## Current — free turning / touch reload / light assist 06, 2026-10-05
+
+Live https://degree-choice.com/?v=combat-6 . Runtime source `77a1f50b7c8bbf03990c90d3bea2690517b881dd`, independent release `combat-6-77a1f50b-ef96cf`. Owner phone feedback identified difficult large turns and unclear reload taps. Reproduced the old cursor clamp holding its heading after 100 inward steps. Replaced cursor translation with horizontal angular swipes (Normal: 1°/px) and independent vertical distance adjustment; full 360° turns work at any radius. Left movement remains screen-relative and camera angle fixed. Reload/swap respond on pointer contact with keyboard/accessibility activation retained. Reload gives started/busy/full/completed feedback, immediate HUD and existing FIRE progress; repeated taps never restart the timer. The prior weapon timer worked in browser checks; a physical Safari tap defect was not directly reproduced.
+
+There was no earlier target-lock assistance. Added optional Assist: Light: a non-accumulating correction within a 6° target cone, at most 1.5° up close, fading to zero at six arena units. Manual heading never locks; distant/dead/behind targets are ignored. Assist: OFF immediately removes correction. Reticle/gun/hitscan share effective direction. Compact options fit portrait.
+
+Evidence: eight logic tests plus initial browser `test-combat-armagedom-1-74f287a3fdc6` exit0; final layout browser `test-combat-armagedom-1-a7e189018298` exit0. Public browser plus 98s recorded playthrough `test-combat-armagedom-1-877adcab3a45` exit0: real two-finger turns in both directions, moving-thumb reload/repeated taps/full-mag feedback, fire-drag/release/cancel, assist/mute and both viewport layouts, zero errors. Recorded 180/90/90° turns match exactly each way; point-blank0.609-unit case7 shots/4 hits/HP0. Old clamp reproduction and capture artifacts under ignored `artifacts/combat-6/`; video `live/play-review/playthrough.mp4`. Ten public runtime SHA/cache/header checks and retired410/absent404 routes PASS. Browser capture does not establish physical Safari tap behaviour, sound perception, phone FPS or ergonomic acceptance. Next: owner phone check of sideways turning, reload and Assist: Light versus OFF.
+
+Deployment only swapped the independent prototype symlink. Degree Choice config unchanged byte-for-byte, no nginx write/reload. Protected main config/snippet and pinned031 public page SHA matched before/after. Main ARMAGEDOM code/assets/operations untouched by this lane. Rollback `/var/backups/test-combat-armagedom-1/combat-6-77a1f50b-ef96cf/`; prior prototype release preserved.
+
+## Previous — combat improvements 05, 2026-10-05
 
 Ready for owner phone check: https://degree-choice.com/?v=combat-5 . Runtime source `f31d527b328a875e6cb93a7c019da7f41642324c`, independent release `combat-5-f31d527b-afb9bd`. Close hitscan starts at the player so targets before the muzzle register; close tracers stop at their hit. Swipe cursor minimum radius3 prevents the unstable near-player turn; Aim cycles Low/Normal/High sensitivity. An edge arrow preserves off-screen aim feedback. Hits flash a reticle marker, procedural shot/impact tones unlock on first gesture with Sound mute, and FIRE shows reload countdown/progress ring. Fixed isometric camera and two-thumb free-look/fire-drag retained. Aim overlays are contained so rotation does not shrink the mobile viewport.
 
