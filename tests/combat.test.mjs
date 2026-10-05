@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stickVector, worldVector, turnAim, followAngle, aimAssist, targetOnRay, rayCircle, WeaponState } from '../src/combat.js';
+import { stickVector, worldVector, turnAim, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle, WeaponState } from '../src/combat.js';
 test('stick deadzone, analog response, and clamping', () => {
   assert.deepEqual(stickVector(1, 1, 50), { x: 0, y: 0 });
   assert.equal(stickVector(100, 0, 50).x, 1);
@@ -91,4 +91,23 @@ test('marker selects first live target on ray, ignores misses/behind/dead/beyond
   targets[1].hp=0; assert.equal(targetOnRay(0,0,0,-1,targets),0);
   targets[0].hp=0; assert.equal(targetOnRay(0,0,0,-1,targets),-1);
   targets[2].x=0; assert.equal(targetOnRay(0,0,0,-1,targets),2);
+});
+
+
+test('sticky assist acquires at 6 degrees, retains to 9, follows travel and releases deliberately', () => {
+  const a = new StickyAim(), rad = Math.PI / 180;
+  const targets = [{x: 0, z: 3, hp: 100}, {x: 0.3, z: 3, hp: 100}];
+  a.update(7 * rad, 0, 0, targets.slice(0,1), true); assert.equal(a.target, -1);
+  a.update(4 * rad, 0, 0, targets, true); assert.equal(a.target, 1);
+  a.reset(); a.update(4 * rad, 0, 0, targets.slice(0,1), true); assert.equal(a.target, 0);
+  a.update(8.9 * rad, 0, 0, targets, true); assert.equal(a.target, 0, 'nearer competing bearing cannot steal retained target');
+  assert.ok(Math.abs(a.correction) < 8.9 * rad, 'partial assist preserves manual error');
+  const tracked = a.track(8.9 * rad, 1, 0, targets, true);
+  assert.ok(Math.abs(tracked - (Math.atan2(-1,3) + 8.9 * rad)) < 1e-9, 'walking preserves intentional offset');
+  a.update(tracked, 1, 0, targets, true); assert.equal(a.target, 0);
+  a.update(Math.atan2(-1,3) - 9.1 * rad, 1, 0, targets, true); assert.equal(a.target, -1);
+  a.update(0, 0, 0, targets, true); assert.equal(a.target, 0);
+  targets[0].hp = 0; a.track(0, 0, 0, targets, true); assert.equal(a.target, -1);
+  targets[0].hp = 100; a.update(0,0,0,targets,true); a.track(0,0,-4,targets,true); assert.equal(a.target,-1, 'range releases');
+  a.update(0,0,0,targets,true); a.update(0,0,0,targets,false); assert.equal(a.target,-1, 'release/cancel/OFF resets retention');
 });

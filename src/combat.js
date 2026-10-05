@@ -42,6 +42,50 @@ export function aimAssist(angle, ox, oz, targets) {
   }
   return correction;
 }
+// Acquire inside 6°, retain inside 9°: 50% more angular effort to leave.
+// Follow bearing changes without removing the player's intentional aim error.
+export class StickyAim {
+  constructor() { this.reset(); }
+  reset() { this.target = -1; this.bearing = 0; this.correction = 0; }
+  valid(ox, oz, targets) {
+    const t = targets[this.target];
+    const distance = t ? Math.hypot(t.x - ox, t.z - oz) : Infinity;
+    return t && t.hp > 0 && distance >= 0.01 && distance < 6;
+  }
+  track(angle, ox, oz, targets, active) {
+    if (!active || !this.valid(ox, oz, targets)) { this.reset(); return angle; }
+    const t = targets[this.target], bearing = Math.atan2(t.x - ox, t.z - oz);
+    const change = Math.atan2(Math.sin(bearing - this.bearing), Math.cos(bearing - this.bearing));
+    this.bearing = bearing;
+    return angle + change;
+  }
+  update(angle, ox, oz, targets, active, acquire = true) {
+    this.correction = 0;
+    if (!active) { this.reset(); return 0; }
+    let best = 6 * Math.PI / 180;
+    if (this.valid(ox, oz, targets)) {
+      const t = targets[this.target], bearing = Math.atan2(t.x - ox, t.z - oz);
+      const delta = Math.atan2(Math.sin(bearing - angle), Math.cos(bearing - angle));
+      if (Math.abs(delta) < 9 * Math.PI / 180) {
+        this.bearing = bearing;
+        this.correction = delta * 0.3575 * Math.max(0, Math.min(1, (6 - Math.hypot(t.x - ox, t.z - oz)) / 4));
+        return this.correction;
+      }
+    }
+    this.reset();
+    if (!acquire) return 0;
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i], distance = Math.hypot(t.x - ox, t.z - oz);
+      if (t.hp <= 0 || distance >= 6 || distance < 0.01) continue;
+      const bearing = Math.atan2(t.x - ox, t.z - oz);
+      const delta = Math.atan2(Math.sin(bearing - angle), Math.cos(bearing - angle));
+      if (Math.abs(delta) >= best) continue;
+      best = Math.abs(delta); this.target = i; this.bearing = bearing;
+      this.correction = delta * 0.3575 * Math.max(0, Math.min(1, (6 - distance) / 4));
+    }
+    return this.correction;
+  }
+}
 // Analytic hitscan against a target circle, returning the entry distance.
 export function rayCircle(ox, oz, dx, dz, cx, cz, radius) {
   const x = cx - ox, z = cz - oz;

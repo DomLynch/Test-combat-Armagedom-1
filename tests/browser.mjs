@@ -277,6 +277,52 @@ try {
   await page.locator('#sound').click(); await page.keyboard.down('Space'); await advance(0.2); await page.keyboard.up('Space');
   assert.ok((await snapshot()).audio.played > mutedCount); results.push('Gesture-unlocked audio schedules actual cues and mute suppresses them');
 
+  // Reproduce acquiring a target, walking while the right thumb pauses, then
+  // small jitter versus a deliberate disengaging turn. All inputs are real touches.
+  await page.locator('#reset').click(); await touch('touchStart', [[1, move.x, move.y]]);
+  for (let i = 0; i < 140; i++) {
+    const s = await snapshot(), dx = -s.x, dz = -5 - s.z, distance = Math.hypot(dx,dz);
+    if (distance < 0.03) break;
+    const sx = dx*Math.cos(s.cameraYaw)-dz*Math.sin(s.cameraYaw), sy=(dx*Math.sin(s.cameraYaw)+dz*Math.cos(s.cameraYaw))*s.verticalScale;
+    const length=Math.hypot(sx,sy), radius=118*0.37*(0.13+0.87*Math.min(0.45,distance/4));
+    await touch('touchMove', [[1,move.x+sx/length*radius,move.y+sy/length*radius]]); await advance(0.075);
+  }
+  await touch('touchEnd', []); await advance(0.08);
+  await page.locator('#assist').click(); assert.equal((await snapshot()).assistEnabled,true);
+  before=await snapshot();
+  const acquireAngle=Math.atan2(-before.x,-8-before.z)+4*Math.PI/180;
+  const acquireSwipe=-Math.atan2(Math.sin(acquireAngle-heading(before)),Math.cos(acquireAngle-heading(before)))*180/Math.PI;
+  await swipe(620,170,acquireSwipe,0);
+  await touch('touchStart', [[1,move.x,move.y],[2,620,170]]); await advance(0.1);
+  assert.equal((await snapshot()).assistTarget,0,'acquires living target while aiming');
+  await touch('touchMove', [[1,move.x+20,move.y],[2,620,170]]); before=await snapshot(); await advance(0.5);
+  after=await snapshot();
+  assert.ok(Math.hypot(after.x-before.x,after.z-before.z)>0.3,'actually walking');
+  assert.equal(after.assistTarget,0); assert.equal(after.selectedTarget,0); assert.equal(after.movementFacing,false,'idle aiming thumb retains opponent beyond old 180ms timeout');
+  await touch('touchMove', [[1,move.x+20,move.y],[2,617,170]]); await advance(0.3);
+  after=await snapshot(); assert.equal(after.assistTarget,0,'7-degree error is outside acquisition but retained inside 9 degrees'); assert.equal(after.selectedTarget,0);
+  await page.screenshot({path:'artifacts/sticky-walking.png'});
+  await touch('touchMove', [[1,move.x+20,move.y],[2,595,170]]); await advance(0.35);
+  after=await snapshot(); assert.equal(after.assistTarget,null,'deliberate turn releases opponent'); assert.equal(after.movementFacing,true);
+  await touch('touchEnd', []); await advance(0.08);
+  before=await snapshot();
+  const reacquireAngle=Math.atan2(-before.x,-8-before.z)+4*Math.PI/180;
+  await swipe(620,170,-Math.atan2(Math.sin(reacquireAngle-heading(before)),Math.cos(reacquireAngle-heading(before)))*180/Math.PI,0);
+  await touch('touchStart', [[1,move.x,move.y],[2,620,170]]); await advance(0.08); assert.equal((await snapshot()).assistTarget,0);
+  await touch('touchMove', [[1,move.x+20,move.y],[2,620,170]]); await advance(0.1);
+  await touch('touchEnd', [[2,620,170]]); await advance(0.3);
+  after=await snapshot(); assert.equal(after.assistTarget,null,'lifting aiming thumb clears retention'); assert.equal(after.movementFacing,true,'walking resumes full-body travel facing');
+  await touch('touchEnd', []); before=await snapshot();
+  const cancelAngle=Math.atan2(-before.x,-8-before.z)+4*Math.PI/180;
+  await swipe(620,170,-Math.atan2(Math.sin(cancelAngle-heading(before)),Math.cos(cancelAngle-heading(before)))*180/Math.PI,0);
+  await touch('touchStart', [[2,620,170]]); await advance(0.08); assert.equal((await snapshot()).assistTarget,0);
+  await touch('touchCancel', []); await advance(0.08); assert.equal((await snapshot()).assistTarget,null,'canceled touch clears acquired opponent');
+  await touch('touchStart', [[2,620,170]]); await advance(0.08); assert.equal((await snapshot()).assistTarget,0);
+  await page.locator('#assist').click(); await advance(0.08); after=await snapshot();
+  assert.equal(after.assistEnabled,false); assert.equal(after.assistTarget,null); assert.equal(after.assistCorrection,0,'OFF clears active retention and correction');
+  await touch('touchEnd', []);
+  results.push('Acquired opponent survives walking/jitter; deliberate turn/lift/cancel/OFF release it and restore walking facing');
+
   await page.locator('#reset').click(); await touch('touchStart', [[1, move.x, move.y]]);
   const deadline = (await snapshot()).simTime + 14;
   for (let i = 0; i < 140; i++) {
