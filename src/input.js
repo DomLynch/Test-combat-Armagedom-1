@@ -1,8 +1,8 @@
-import { stickVector } from './combat.js?v=combat-12';
+import { stickVector } from './combat.js?v=combat-13';
 export function createInput(canvas, onReload, onSwap) {
-  const state = { move: { x: 0, y: 0 }, lookDelta: { x: 0, y: 0 }, looking: false, touchAim: false, keys: new Set(), fires: new Set(), firePressed: false, focus: false, pointerAim: null };
+  const state = { move: { x: 0, y: 0 }, moveHeld: false, touchAim: false, keys: new Set(), fires: new Set(), firePressed: false, focus: false, pointerAim: null };
   const element = document.getElementById('move'), knob = element.querySelector('.knob');
-  let moveId = null, look = null;
+  let moveId = null;
   function updateMove(e) {
     const rect = element.getBoundingClientRect(), radius = rect.width * 0.37;
     const x = e.clientX - rect.left - rect.width / 2, y = e.clientY - rect.top - rect.height / 2;
@@ -12,39 +12,30 @@ export function createInput(canvas, onReload, onSwap) {
   }
   function releaseMove(e) {
     if (e && e.pointerId !== moveId) return;
-    const previous = moveId; moveId = null; state.move = { x: 0, y: 0 }; knob.style.transform = '';
+    const previous = moveId; moveId = null; state.moveHeld = false; state.move = { x: 0, y: 0 }; knob.style.transform = '';
     if (previous !== null && element.hasPointerCapture(previous)) element.releasePointerCapture(previous);
   }
-  element.addEventListener('pointerdown', e => { e.preventDefault(); if (moveId !== null) return; moveId = e.pointerId; element.setPointerCapture(moveId); updateMove(e); });
+  element.addEventListener('pointerdown', e => { e.preventDefault(); if (moveId !== null) return; moveId = e.pointerId; state.moveHeld = true; state.touchAim = true; state.pointerAim = null; element.setPointerCapture(moveId); updateMove(e); });
   element.addEventListener('pointermove', e => { if (moveId === e.pointerId) updateMove(e); });
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) element.addEventListener(event, releaseMove);
 
-  // One right thumb owns either free look or fire + look. Aim is relative to
-  // finger travel, so lifting/replanting the thumb never snaps the gun around.
-  function releaseLook(e) {
-    if (!look || (e && e.pointerId !== look.id)) return;
+  // FIRE owns only its press/release. Pointer travel never steers or moves.
+  const fire = document.getElementById('fire-right');
+  let fireId = null;
+  function releaseFire(e) {
+    if (fireId === null || (e && e.pointerId !== fireId)) return;
     if (e && e.type !== 'pointerup') state.firePressed = false;
-    const previous = look; look = null; state.looking = false;
-    state.fires.delete('touch-fire'); previous.element.classList.remove('held');
-    if (previous.element.hasPointerCapture(previous.id)) previous.element.releasePointerCapture(previous.id);
+    const previous = fireId; fireId = null; state.fires.delete('touch-fire'); fire.classList.remove('held');
+    if (fire.hasPointerCapture(previous)) fire.releasePointerCapture(previous);
   }
-  function bindLook(surface, firing) {
-    surface.addEventListener('pointerdown', e => {
-      if (!firing && (e.pointerType === 'mouse' || e.clientX < innerWidth / 2)) return;
-      e.preventDefault(); if (look) return;
-      look = { id: e.pointerId, element: surface, x: e.clientX, y: e.clientY };
-      state.looking = true; state.touchAim = true; state.pointerAim = null; surface.setPointerCapture(e.pointerId);
-      if (firing) { state.firePressed = true; state.fires.add('touch-fire'); surface.classList.add('held'); }
-    });
-    surface.addEventListener('pointermove', e => {
-      if (!look || look.id !== e.pointerId || look.element !== surface) return;
-      state.lookDelta.x += e.clientX - look.x; state.lookDelta.y += e.clientY - look.y;
-      look.x = e.clientX; look.y = e.clientY;
-    });
-    for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) surface.addEventListener(event, releaseLook);
-  }
-  bindLook(canvas, false); bindLook(document.getElementById('fire-right'), true);
-  canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && !look) { state.touchAim = false; state.pointerAim = { x: e.clientX, y: e.clientY }; } });
+  fire.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || fireId !== null) return;
+    e.preventDefault(); fireId = e.pointerId; fire.setPointerCapture(fireId);
+    state.firePressed = true; state.fires.add('touch-fire'); fire.classList.add('held');
+  });
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) fire.addEventListener(event, releaseFire);
+  // Desktop mouse aim remains available; mobile canvas touches have no aim role.
+  canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { state.touchAim = false; state.pointerAim = { x: e.clientX, y: e.clientY }; } });
   canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; canvas.setPointerCapture(e.pointerId); if (e.button === 0) { state.firePressed = true; state.fires.add('mouse'); } if (e.button === 2) state.focus = true; });
   const releaseMouse = e => { if (e.pointerType !== 'mouse') return; if (e.type !== 'pointerup' && state.fires.has('mouse')) state.firePressed = false; state.fires.delete('mouse'); state.focus = false; };
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(event, releaseMouse);
@@ -56,7 +47,7 @@ export function createInput(canvas, onReload, onSwap) {
     if (e.code === 'Space') { state.firePressed = true; state.fires.add('keyboard'); }
   });
   document.addEventListener('keyup', e => { state.keys.delete(e.code); if (e.code === 'Space') state.fires.delete('keyboard'); });
-  state.clear = () => { releaseMove(); releaseLook(); state.lookDelta.x = state.lookDelta.y = 0; state.keys.clear(); state.fires.clear(); state.firePressed = false; state.focus = false; state.pointerAim = null; };
+  state.clear = () => { releaseMove(); releaseFire(); state.keys.clear(); state.fires.clear(); state.firePressed = false; state.focus = false; state.pointerAim = null; };
   window.addEventListener('blur', state.clear);
   document.addEventListener('visibilitychange', () => { if (document.hidden) state.clear(); });
   window.addEventListener('resize', state.clear);

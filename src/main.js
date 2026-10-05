@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, turnAim, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-12';
-import { createCombatAudio } from './audio.js?v=combat-12';
-import { installTouchGuards } from './touch.js?v=combat-12';
-import { createInput, bindAction } from './input.js?v=combat-12';
+import { WeaponState, worldVector, followAngle, aimAssist, StickyAim, targetOnRay, rayCircle } from './combat.js?v=combat-13';
+import { createCombatAudio } from './audio.js?v=combat-13';
+import { installTouchGuards } from './touch.js?v=combat-13';
+import { createInput, bindAction } from './input.js?v=combat-13';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -96,9 +96,8 @@ const aimOffset = new THREE.Vector2(0, -5);
 const audio = createCombatAudio();
 let targetIndex = -1, lastHitX = 0, lastHitZ = 0;
 const stickyAim = new StickyAim();
-let assistEnabled = true, assistCorrection = 0, manualAimRemaining = 0, movementFacing = false;
-let sensitivityIndex = 1, soundEnabled = true, hitMarkerTime = 0;
-const sensitivities = [0.65, 1, 1.35], sensitivityNames = ['Low', 'Normal', 'High'];
+let assistEnabled = true, assistCorrection = 0, previousMoveAngle = null, movementFacing = false;
+let soundEnabled = true, hitMarkerTime = 0;
 const weapons = new WeaponState();
 function reload() {
   if (!started) return;
@@ -110,11 +109,10 @@ function swap() { if (!started) return; weapons.swap(); barrel.scale.z = weapons
 const input = createInput(canvas, reload, swap);
 bindAction($('reload'), reload); bindAction($('swap'), swap);
 $('assist').onclick = () => { assistEnabled = !assistEnabled; stickyAim.reset(); $('assist').textContent = assistEnabled ? 'Assist: Light' : 'Assist: OFF'; $('assist').setAttribute('aria-pressed', String(assistEnabled)); };
-$('sensitivity').onclick = () => { sensitivityIndex = (sensitivityIndex + 1) % sensitivities.length; $('sensitivity').textContent = `Aim: ${sensitivityNames[sensitivityIndex]}`; };
 $('sound').onclick = () => { soundEnabled = !soundEnabled; audio.setEnabled(soundEnabled); $('sound').textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`; $('sound').setAttribute('aria-pressed', String(soundEnabled)); };
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
-  input.clear(); stickyAim.reset(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; manualAimRemaining = 0; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
+  input.clear(); stickyAim.reset(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; previousMoveAngle = null; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
   barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
   for (const t of tracers) { t.remaining = 0; t.line.visible = false; } updateCamera(0, true); showFeedback('Range reset');
 };
@@ -168,7 +166,7 @@ function updateHud() {
   const reloading = weapons.reloadRemaining > 0;
   $('fire-right').classList.toggle('reloading', reloading);
   $('fire-label').textContent = reloading ? 'RELOAD' : 'FIRE';
-  $('fire-hint').textContent = reloading ? weapons.reloadRemaining.toFixed(1) + 's' : 'HOLD + DRAG';
+  $('fire-hint').textContent = reloading ? weapons.reloadRemaining.toFixed(1) + 's' : 'HOLD TO FIRE';
   $('reload-ring').style.strokeDashoffset = String(reloading ? 100 * weapons.reloadRemaining / weapons.weapon.reload : 100);
   $('reload').textContent = reloading ? 'RELOADING…' : 'RELOAD';
   $('reload').classList.toggle('held', reloading);
@@ -195,31 +193,27 @@ renderer.setAnimationLoop(time => {
     player.position.z = THREE.MathUtils.clamp(player.position.z + move.z * dt * speed, -13.1, 13.1);
     if (moving) { leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.36; rightLeg.rotation.x = -leftLeg.rotation.x; } else leftLeg.rotation.x = rightLeg.rotation.x = 0;
     updateCamera(dt);
-    const stickyActive = assistEnabled && input.touchAim && !input.pointerAim && Boolean(input.looking || input.fires.size || input.firePressed);
-    const trackedAngle = stickyAim.track(Math.atan2(aimOffset.x, aimOffset.y), player.position.x, player.position.z, targets, stickyActive);
-    if (stickyAim.target >= 0) { const radius = aimOffset.length(); aimOffset.set(Math.sin(trackedAngle) * radius, Math.cos(trackedAngle) * radius); }
-    manualAimRemaining = Math.max(0, manualAimRemaining - dt);
-    if (input.lookDelta.x || input.lookDelta.y) {
-      manualAimRemaining = 0.18;
-      const next = turnAim(aimOffset.x, aimOffset.y, input.lookDelta.x, input.lookDelta.y, sensitivities[sensitivityIndex], (camera.top - camera.bottom) / innerHeight);
-      aimOffset.set(next.x, next.z); input.lookDelta.x = input.lookDelta.y = 0;
-    } else if (input.pointerAim) {
+    // The left stick owns mobile movement and targeting. FIRE never affects heading.
+    const stickyActive = assistEnabled && input.touchAim && input.moveHeld && !input.pointerAim;
+    let rawAngle = stickyAim.track(Math.atan2(aimOffset.x, aimOffset.y), player.position.x, player.position.z, targets, stickyActive);
+    if (input.pointerAim) {
       pointer.set(input.pointerAim.x / innerWidth * 2 - 1, 1 - input.pointerAim.y / innerHeight * 2); raycaster.setFromCamera(pointer, camera);
-      if (raycaster.ray.intersectPlane(aimPlane, mouseWorld)) aimOffset.set(mouseWorld.x - player.position.x, mouseWorld.z - player.position.z);
+      if (raycaster.ray.intersectPlane(aimPlane, mouseWorld)) rawAngle = Math.atan2(mouseWorld.x - player.position.x, mouseWorld.z - player.position.z);
+    } else if (moving) {
+      const moveAngle = Math.atan2(move.x, move.z);
+      // Retention compensates travel; changes of left-stick direction remain manual.
+      rawAngle = stickyAim.target >= 0 && previousMoveAngle !== null
+        ? rawAngle + Math.atan2(Math.sin(moveAngle - previousMoveAngle), Math.cos(moveAngle - previousMoveAngle))
+        : moveAngle;
+      previousMoveAngle = input.moveHeld ? moveAngle : null;
     }
-    const retainedCorrection = stickyAim.update(Math.atan2(aimOffset.x, aimOffset.y), player.position.x, player.position.z, targets, stickyActive, !moving || manualAimRemaining > 0 || Boolean(input.fires.size || input.firePressed));
-    // A retained opponent survives an idle aiming thumb while walking. Without
-    // an acquired target, walking still takes over at the screen edge.
-    const manualAim = input.pointerAim || input.fires.size || input.firePressed || (input.looking && manualAimRemaining > 0) || stickyAim.target >= 0;
-    movementFacing = moving && !manualAim;
-    if (movementFacing) {
-      stickyAim.reset();
-      const radius = Math.max(3, aimOffset.length()), length = Math.hypot(move.x, move.z);
-      aimOffset.set(move.x / length * radius, move.z / length * radius);
-    }
-    const aimLength = aimOffset.length();
-    const rawAngle = Math.atan2(aimOffset.x, aimOffset.y);
-    assistCorrection = assistEnabled && input.touchAim && !movementFacing ? (stickyActive ? retainedCorrection : aimAssist(rawAngle, player.position.x, player.position.z, targets)) : 0;
+    if (!input.moveHeld) previousMoveAngle = null;
+    const aimLength = Math.max(3, aimOffset.length());
+    aimOffset.set(Math.sin(rawAngle) * aimLength, Math.cos(rawAngle) * aimLength);
+    const retainedCorrection = stickyAim.update(rawAngle, player.position.x, player.position.z, targets, stickyActive, moving);
+    movementFacing = moving && !input.pointerAim && stickyAim.target < 0;
+    assistCorrection = assistEnabled && input.touchAim && !input.pointerAim
+      ? (stickyActive ? retainedCorrection : aimAssist(rawAngle, player.position.x, player.position.z, targets)) : 0;
     if (aimLength > 0.15) {
       const desiredYaw = Math.atan2(-Math.sin(rawAngle + assistCorrection), -Math.cos(rawAngle + assistCorrection));
       angle = followAngle(angle, desiredYaw, dt);
@@ -269,7 +263,7 @@ window.__combat = {
   snapshot() {
     const worldYaw = group => { const direction = group.getWorldDirection(new THREE.Vector3()); return Math.atan2(direction.x, direction.z); };
     const playerScreen = new THREE.Vector3(player.position.x, 1, player.position.z).project(camera);
-    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, looking: input.looking, controls: 'move-facing-aim-override', movementFacing, selectedTarget: targetIndex < 0 ? null : targetIndex, reticle: { x: reticle.position.x, z: reticle.position.z }, targetMarker: !$('target-marker').classList.contains('hidden'), assistEnabled, assistCorrection, assistTarget: stickyAim.target < 0 ? null : stickyAim.target, sensitivity: sensitivities[sensitivityIndex], audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
+    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, moveHeld: input.moveHeld, controls: 'left-move-aim-fire-button', movementFacing, selectedTarget: targetIndex < 0 ? null : targetIndex, reticle: { x: reticle.position.x, z: reticle.position.z }, targetMarker: !$('target-marker').classList.contains('hidden'), assistEnabled, assistCorrection, assistTarget: stickyAim.target < 0 ? null : stickyAim.target, audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
       targets: targets.map(t => { const v = new THREE.Vector3(t.x, 1.25, t.z).project(camera); return { x: t.x, z: t.z, hp: t.hp, screenX: (v.x + 1) / 2 * innerWidth, screenY: (1 - v.y) / 2 * innerHeight }; }) };
   }
 };

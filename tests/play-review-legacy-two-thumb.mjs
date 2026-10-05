@@ -1,3 +1,5 @@
+// Historical free-look/fire-drag capture for combat 12 and earlier.
+// Current left-stick targeting/fire-only controls are covered by browser.mjs.
 // Recorded, exploratory playthrough. Real browser touch events only; no game-state writes.
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';

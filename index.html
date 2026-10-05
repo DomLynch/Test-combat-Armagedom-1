@@ -18,22 +18,22 @@
 <body>
   <canvas id="game" aria-label="3D isometric weapon test arena"></canvas>
   <header>
-    <div><strong>MOBILE COMBAT</strong><small>TWO THUMBS / 12</small></div>
+    <div><strong>MOBILE COMBAT</strong><small>LEFT AIM / 13</small></div>
     <div id="status" aria-live="polite">RIFLE · 30 / 30</div>
     <button id="reset">Reset</button>
   </header>
   <div id="stats">Hits 0 · Shots 0 · Accuracy —</div>
   <div id="feedback" aria-live="polite"></div>
-  <div class="options"><button id="sensitivity" aria-label="Cycle aim sensitivity">Aim: Normal</button><button id="assist" aria-pressed="true">Assist: Light</button><button id="sound" aria-pressed="true">Sound: ON</button><button id="fullscreen">Full screen</button></div>
-  <div class="stick" id="move" role="group" aria-label="Movement joystick"><span class="stick-label">MOVE</span><div class="knob"></div></div>
+  <div class="options"><button id="assist" aria-pressed="true">Assist: Light</button><button id="sound" aria-pressed="true">Sound: ON</button><button id="fullscreen">Full screen</button></div>
+  <div class="stick" id="move" role="group" aria-label="Movement and targeting joystick"><span class="stick-label">MOVE + AIM</span><div class="knob"></div></div>
   <div id="aim-overlays"><div id="aim-edge" class="hidden" aria-hidden="true">➤</div>
   <div id="target-marker" class="hidden" aria-hidden="true">▼</div>
   <div id="hit-marker" aria-hidden="true">×</div></div>
-  <div id="look-hint">SWIPE TO AIM</div>
-  <button class="fire fire-right" id="fire-right" aria-label="Fire; hold and drag to aim"><svg class="reload-ring" viewBox="0 0 100 100" aria-hidden="true"><circle id="reload-ring" cx="50" cy="50" r="47" pathLength="100"/></svg><span id="fire-label">FIRE</span><small id="fire-hint">HOLD + DRAG</small></button>
+  <div id="look-hint">FIRE ONLY</div>
+  <button class="fire fire-right" id="fire-right" aria-label="Fire; hold to shoot"><svg class="reload-ring" viewBox="0 0 100 100" aria-hidden="true"><circle id="reload-ring" cx="50" cy="50" r="47" pathLength="100"/></svg><span id="fire-label">FIRE</span><small id="fire-hint">HOLD TO FIRE</small></button>
   <div class="actions"><button id="reload">RELOAD</button><button id="swap">PISTOL</button></div>
-  <div id="hint">Left stick walks + turns your whole body<br>Right swipe aims · Hold + drag FIRE to strafe and shoot</div>
+  <div id="hint">Left stick moves + aims · Nearby targets stay assisted<br>Hold FIRE to shoot</div>
   <div id="welcome" class="hidden" role="alert"></div>
-  <script type="module" src="./src/main.js?v=combat-12"></script>
+  <script type="module" src="./src/main.js?v=combat-13"></script>
 </body>
 </html>

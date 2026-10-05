@@ -3,7 +3,7 @@
 export function installTouchGuards() {
   const surface = '#game, #move, #fire-right, .actions';
   const onGame = target => Boolean(target?.closest?.(surface));
-  const role = target => target?.closest?.('#move') ? 'move' : target?.closest?.('#game, #fire-right, .actions') ? 'aim' : null;
+  const role = target => target?.closest?.('#move') ? 'move' : target?.closest?.('#fire-right, .actions') ? 'action' : null;
   const options = { passive: false, capture: true };
   let lastGameEnd = -Infinity;
   for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
@@ -13,7 +13,7 @@ export function installTouchGuards() {
     document.addEventListener(type, event => {
       if (event.touches.length < 2 || !Array.from(event.touches).some(t => onGame(t.target))) return;
       const roles = Array.from(event.touches, t => role(t.target));
-      const controlPair = roles.length === 2 && roles.includes('move') && roles.includes('aim');
+      const controlPair = roles.length === 2 && roles.includes('move') && roles.includes('action');
       // Allow the real two-thumb pair. Extra/unowned contacts get no native pinch action.
       if (!controlPair && event.cancelable) event.preventDefault();
     }, options);
