@@ -47,7 +47,8 @@ p { color: #b4c3c7; font-size: 14px; line-height: 1.65; }
   #hint { bottom: calc(246px + var(--safe-bottom)); width: 100%; }
   .fire-right { right: max(26px, env(safe-area-inset-right)); }
   #look-hint { right: max(24px, env(safe-area-inset-right)); }
-  .options { top: 109px; } #feedback { top: 27%; }
+  .options { top: 109px; gap: 5px; }
+  .options button { padding: 8px 7px; font-size: 10px; } #feedback { top: 27%; }
 }
 
 #aim-edge, #hit-marker { position: absolute; top: 0; left: 0; pointer-events: none; color: var(--mint); z-index: 2; text-shadow: 0 1px 4px #000; }

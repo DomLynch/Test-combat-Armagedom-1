@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const closeOnly = process.env.REVIEW_ONLY === 'close';
 const out = closeOnly ? 'artifacts/play-review-close' : 'artifacts/play-review';
 await mkdir(out + '/video', { recursive: true });
-const url = process.env.TEST_URL || 'https://degree-choice.com/?v=combat-5';
+const url = process.env.TEST_URL || 'https://degree-choice.com/?v=combat-6';
 const releaseMeta = await (await fetch(new URL('/release.json', url))).json();
 const integrity = [];
 for (const [name, expected] of Object.entries(releaseMeta.files_sha256)) {
@@ -42,7 +42,12 @@ async function swipe(dx, dy, start = { x: 615, y: 180 }, steps = 8) {
   for (let i=1; i<=steps; i++) { await move(2, start.x + dx*i/steps, start.y + dy*i/steps); await advance(0.035); }
   await lift(2); await advance(0.06);
 }
-async function aimOffsetTo(x, z) { const s = await snapshot(), p = pixelsFor(s, x - s.aimOffset.x, z - s.aimOffset.z); await swipe(p.x, p.y); }
+function aimTravel(s, x, z) {
+  const current = Math.atan2(s.aimOffset.x, s.aimOffset.z), desired = Math.atan2(x, z);
+  const delta = Math.atan2(Math.sin(current - desired), Math.cos(current - desired));
+  return { x: delta * 180 / Math.PI / s.sensitivity, y: (Math.hypot(s.aimOffset.x, s.aimOffset.z) - Math.hypot(x, z)) / (16 / 390) / s.sensitivity };
+}
+async function aimOffsetTo(x, z) { const s = await snapshot(), p = aimTravel(s, x, z); await swipe(p.x, p.y); }
 async function aimTarget(index) { const s=await snapshot(), t=s.targets[index]; await aimOffsetTo(t.x-s.x, t.z-s.z); }
 async function setPhase(text) { phase = text; phases.push({ text, wallSeconds: (performance.now()-wallStart)/1000 }); await page.locator('#review-phase').evaluate((el, value) => { el.textContent = value; }, text); }
 async function checkpoint(name) { const file = `${out}/${String(++checkpointIndex).padStart(2,'0')}-${name}.png`; await page.screenshot({ path: file }); const s=await sample(name); return { file, ...s }; }
@@ -79,6 +84,10 @@ try {
   const center=async id=>{const b=await page.locator(id).boundingBox();return{x:b.x+b.width/2,y:b.y+b.height/2};};
   moveCenter=await center('#move'); fireCenter=await center('#fire-right');
   if (!closeOnly) {
+  await setPhase('00 · Continuous 180 / 270 / 360-degree turns');
+  await down(1,moveCenter.x+20,moveCenter.y);
+  for (const degrees of [180,90,90,-180,-90,-90]) { const a=await snapshot(); await swipe(degrees,0); const b=await checkpoint('turn-'+degrees); observations.push({case:'turn',inputDegrees:degrees,rotationDegrees:angleBetween(a,b)}); }
+  await release();await reset();
   await setPhase('01 · Move, strafe and aim with two thumbs');
   await advance(0.6); await down(1,moveCenter.x,moveCenter.y); await move(1,moveCenter.x+40,moveCenter.y);
   await swipe(70,-35); await advance(0.6); await checkpoint('strafe');
@@ -91,7 +100,7 @@ try {
   await down(1,moveCenter.x,moveCenter.y); await move(1,moveCenter.x+32,moveCenter.y);
   await down(2,fireCenter.x,fireCenter.y); let previous={...fireCenter};
   const fireStart=await snapshot();
-  for(let i=0;i<18;i++) { const s=await snapshot(), t=s.targets[0], p=pixelsFor(s,t.x-s.x-s.aimOffset.x,t.z-s.z-s.aimOffset.z); previous.x+=p.x;previous.y+=p.y;await move(2,previous.x,previous.y);await advance(0.09);if(i===8)await checkpoint('rifle-strafe-fire'); }
+  for(let i=0;i<18;i++) { const s=await snapshot(), t=s.targets[0], p=aimTravel(s,t.x-s.x,t.z-s.z); previous.x+=p.x;previous.y+=p.y;await move(2,previous.x,previous.y);await advance(0.09);if(i===8)await checkpoint('rifle-strafe-fire'); }
   await release(); const fireEnd=await snapshot(); observations.push({case:'rifle-strafe-track',shots:fireEnd.shots-fireStart.shots,hits:fireEnd.hits-fireStart.hits,movement:Math.hypot(fireEnd.x-fireStart.x,fireEnd.z-fireStart.z)});
   await page.locator('#reload').tap(); await advance(0.45); await checkpoint('reload'); await advance(1.05);
   await page.locator('#swap').tap(); await advance(0.3); await aimTarget(2); const pistolStart=await snapshot();
@@ -99,7 +108,7 @@ try {
   const pistolEnd=await snapshot();observations.push({case:'pistol',shots:pistolEnd.shots-pistolStart.shots,hits:pistolEnd.hits-pistolStart.hits});
 
   await reset();await setPhase('03 · Chase the moving dummy with firing drags');await aimTarget(6);await down(2,fireCenter.x,fireCenter.y);previous={...fireCenter};const trackingStart=await snapshot();
-  for(let i=0;i<20;i++){const s=await snapshot(),t=s.targets[6],p=pixelsFor(s,t.x-s.x-s.aimOffset.x,t.z-s.z-s.aimOffset.z);previous.x+=p.x;previous.y+=p.y;await move(2,previous.x,previous.y);await advance(0.12);if(i===10)await checkpoint('moving-target');}
+  for(let i=0;i<20;i++){const s=await snapshot(),t=s.targets[6],p=aimTravel(s,t.x-s.x,t.z-s.z);previous.x+=p.x;previous.y+=p.y;await move(2,previous.x,previous.y);await advance(0.12);if(i===10)await checkpoint('moving-target');}
   await release();const trackingEnd=await snapshot();observations.push({case:'moving-target-tracking',shots:trackingEnd.shots-trackingStart.shots,hits:trackingEnd.hits-trackingStart.hits});
 
   await reset();await setPhase('04 · Long swipes: does the aiming cursor stay visible?');await swipe(0,-210);await swipe(0,-150);
@@ -107,7 +116,7 @@ try {
   await down(2,fireCenter.x,fireCenter.y);await advance(0.5);await release();
 
   await reset();await setPhase('05 · Precision: small swipe near the player');await aimOffsetTo(0,-0.35);const nearBefore=await checkpoint('near-aim-before');
-  const nearPixels=pixelsFor(nearBefore,0,0.7);await swipe(nearPixels.x,nearPixels.y,undefined,6);const nearAfter=await checkpoint('near-aim-after');
+  const nearPixels={x:0,y:14.4};await swipe(nearPixels.x,nearPixels.y,undefined,6);const nearAfter=await checkpoint('near-aim-after');
   observations.push({case:'near-player-aim',swipePixels:Math.hypot(nearPixels.x,nearPixels.y),rotationDegrees:angleBetween(nearBefore,nearAfter),before:nearBefore.aimOffset,after:nearAfter.aimOffset});
 
   }
@@ -119,7 +128,8 @@ try {
   observations.push({case:'point-blank',range:Math.hypot(closeStart.targets[0].x-closeStart.x,closeStart.targets[0].z-closeStart.z),shots:closeEnd.shots-closeStart.shots,hits:closeEnd.hits-closeStart.hits,targetHp:closeEnd.targets[0].hp,aimX:closeEnd.aimX,aimZ:closeEnd.aimZ});
   await advance(0.8);await setPhase('08 · Review complete — original live game unchanged');await advance(0.8);
   const touchStats=await page.evaluate(()=>window.reviewTouchStats);assert.ok(touchStats.max<=2);assert.deepEqual(errors,[]);
-  if (releaseMeta.release_id.startsWith('combat-5-')) {
+  if (releaseMeta.release_id.startsWith('combat-6-')) {
+    for (const turn of observations.filter(o => o.case === 'turn')) assert.ok(Math.abs(turn.rotationDegrees - Math.abs(turn.inputDegrees)) < 3, 'full-circle touch turns');
     const close = observations.find(o => o.case === 'point-blank');
     assert.ok(close.range > 0.5 && close.range < 0.7 && close.hits >= 3, 'controlled close-range shots hit');
     const turn = observations.find(o => o.case === 'near-player-aim');

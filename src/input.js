@@ -1,6 +1,6 @@
-import { stickVector } from './combat.js?v=combat-5';
+import { stickVector } from './combat.js?v=combat-6';
 export function createInput(canvas, onReload, onSwap) {
-  const state = { move: { x: 0, y: 0 }, lookDelta: { x: 0, y: 0 }, looking: false, keys: new Set(), fires: new Set(), focus: false, pointerAim: null };
+  const state = { move: { x: 0, y: 0 }, lookDelta: { x: 0, y: 0 }, looking: false, touchAim: false, keys: new Set(), fires: new Set(), focus: false, pointerAim: null };
   const element = document.getElementById('move'), knob = element.querySelector('.knob');
   let moveId = null, look = null;
   function updateMove(e) {
@@ -32,7 +32,7 @@ export function createInput(canvas, onReload, onSwap) {
       if (!firing && (e.pointerType === 'mouse' || e.clientX < innerWidth / 2)) return;
       e.preventDefault(); if (look) return;
       look = { id: e.pointerId, element: surface, x: e.clientX, y: e.clientY };
-      state.looking = true; state.pointerAim = null; surface.setPointerCapture(e.pointerId);
+      state.looking = true; state.touchAim = true; state.pointerAim = null; surface.setPointerCapture(e.pointerId);
       if (firing) { state.fires.add('touch-fire'); surface.classList.add('held'); }
     });
     surface.addEventListener('pointermove', e => {
@@ -43,7 +43,7 @@ export function createInput(canvas, onReload, onSwap) {
     for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) surface.addEventListener(event, releaseLook);
   }
   bindLook(canvas, false); bindLook(document.getElementById('fire-right'), true);
-  canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && !look) state.pointerAim = { x: e.clientX, y: e.clientY }; });
+  canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && !look) { state.touchAim = false; state.pointerAim = { x: e.clientX, y: e.clientY }; } });
   canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; canvas.setPointerCapture(e.pointerId); if (e.button === 0) state.fires.add('mouse'); if (e.button === 2) state.focus = true; });
   const releaseMouse = e => { if (e.pointerType !== 'mouse') return; state.fires.delete('mouse'); state.focus = false; };
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(event, releaseMouse);
@@ -60,4 +60,11 @@ export function createInput(canvas, onReload, onSwap) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) state.clear(); });
   window.addEventListener('resize', state.clear);
   return state;
+}
+
+// Respond on contact, including while another finger owns the movement stick.
+// Suppress the compatibility click; detail=0 retains keyboard/accessibility activation.
+export function bindAction(element, action) {
+  element.addEventListener('pointerdown', e => { if (e.button !== 0) return; e.preventDefault(); action(); });
+  element.addEventListener('click', e => { if (e.detail === 0) action(); });
 }

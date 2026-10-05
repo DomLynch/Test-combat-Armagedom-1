@@ -15,20 +15,27 @@ export function worldVector(x, y, verticalScale, yaw = 0) {
   const right = x / length * strength, down = y / verticalScale / length * strength;
   return { x: right * Math.cos(yaw) + down * Math.sin(yaw), z: -right * Math.sin(yaw) + down * Math.cos(yaw) };
 }
-// Screen-pixel travel to ground-plane travel, without joystick normalization.
-export function lookTravel(dx, dy, unitsPerPixel, verticalScale, yaw) {
-  const right = dx * unitsPerPixel, down = dy * unitsPerPixel / verticalScale;
-  return { x: right * Math.cos(yaw) + down * Math.sin(yaw), z: -right * Math.sin(yaw) + down * Math.cos(yaw) };
+// Horizontal travel rotates freely; vertical travel adjusts reticle distance.
+// Keeping radius separate from heading avoids a cursor clamp resisting reversal.
+export function turnAim(x, z, dx, dy, sensitivity = 1, unitsPerPixel = 0.04) {
+  const angle = Math.atan2(x, z) - dx * Math.PI / 180 * sensitivity;
+  const radius = Math.max(3, Math.min(14, Math.hypot(x, z) - dy * unitsPerPixel * sensitivity));
+  return { x: Math.sin(angle) * radius, z: Math.cos(angle) * radius };
 }
-// Keep the cursor clear of the player, where tiny swipes otherwise reverse aim.
-export function swipeAim(x, z, dx, dz, sensitivity = 1, minimum = 3, maximum = 14) {
-  const initial = Math.hypot(x, z);
-  if (initial < minimum) { const scale = minimum / Math.max(initial, 1e-9); x *= scale; z *= scale; if (!initial) z = -minimum; }
-  const nextX = x + dx * sensitivity, nextZ = z + dz * sensitivity;
-  const length = Math.hypot(nextX, nextZ);
-  if (length < 1e-6) return { x, z };
-  const radius = Math.max(minimum, Math.min(maximum, length));
-  return { x: nextX / length * radius, z: nextZ / length * radius };
+// A small, non-accumulating correction near a living target. No lock or long-range pull.
+export function aimAssist(angle, ox, oz, targets) {
+  const cone = 6 * Math.PI / 180;
+  let correction = 0, best = cone;
+  for (const t of targets) {
+    if (t.hp <= 0) continue;
+    const distance = Math.hypot(t.x - ox, t.z - oz);
+    if (distance >= 6 || distance < 0.01) continue;
+    const delta = Math.atan2(Math.sin(Math.atan2(t.x - ox, t.z - oz) - angle), Math.cos(Math.atan2(t.x - ox, t.z - oz) - angle));
+    if (Math.abs(delta) >= best) continue;
+    best = Math.abs(delta);
+    correction = delta * 0.25 * Math.max(0, Math.min(1, (6 - distance) / 4));
+  }
+  return correction;
 }
 // Analytic hitscan against a target circle, returning the entry distance.
 export function rayCircle(ox, oz, dx, dz, cx, cz, radius) {
@@ -45,7 +52,11 @@ export class WeaponState {
   reset() { this.index = 0; this.ammo = WEAPONS.map(w => w.capacity); this.cooldown = 0; this.reloadRemaining = 0; }
   get weapon() { return WEAPONS[this.index]; }
   swap() { this.index = 1 - this.index; this.reloadRemaining = 0; this.cooldown = 0.22; }
-  reload() { if (!this.reloadRemaining && this.ammo[this.index] < this.weapon.capacity) this.reloadRemaining = this.weapon.reload; }
+  reload() {
+    if (this.reloadRemaining) return 'busy';
+    if (this.ammo[this.index] === this.weapon.capacity) return 'full';
+    this.reloadRemaining = this.weapon.reload; return 'started';
+  }
   tick(dt) {
     this.cooldown = Math.max(0, this.cooldown - dt);
     if (this.reloadRemaining > 0) {

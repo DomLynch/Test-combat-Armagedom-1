@@ -44,6 +44,7 @@ try {
   await advance(1.05);
   assert.equal((await snapshot()).reloading, 0); assert.equal((await snapshot()).ammo, 12); results.push('Weapon switching and actual magazine reload through UI');
   await page.locator('#reset').click();
+  await page.locator('#assist').click(); assert.equal((await snapshot()).assistEnabled, false);
   const center = async id => { const b = await page.locator(id).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
   const move = await center('#move'), fire = await center('#fire-right');
   const cdp = await context.newCDPSession(page);
@@ -51,7 +52,7 @@ try {
   const closeOffset = (a, b) => { assert.ok(Math.abs(a.x - b.x) < 1e-5 && Math.abs(a.z - b.z) < 1e-5, 'reticle offset preserved: ' + JSON.stringify({ a, b })); };
   assert.equal(await page.locator('#aim, #fire-left, #mode, #focus').count(), 0, 'no second joystick or claw controls');
   before = await snapshot();
-  assert.equal(before.controls, 'two-thumb-swipe');
+  assert.equal(before.controls, 'two-thumb-turn');
   await touch('touchStart', [[1, move.x, move.y], [2, 620, 170]]);
   await advance(0.08); closeOffset((await snapshot()).aimOffset, before.aimOffset);
   await touch('touchMove', [[1, move.x + 40, move.y], [2, 685, 195]]);
@@ -84,18 +85,44 @@ try {
   const swipe = async (x, y, dx, dy) => {
     await touch('touchStart', [[2, x, y]]); await touch('touchMove', [[2, x + dx, y + dy]]); await advance(0.08); await touch('touchEnd', []); await advance(0.05);
   };
-  const initial = (await snapshot()).aimOffset;
-  await swipe(620, 170, 45, -20); const firstSwipe = (await snapshot()).aimOffset;
-  await swipe(520, 145, 45, -20); const secondSwipe = (await snapshot()).aimOffset;
-  closeOffset({ x: secondSwipe.x - firstSwipe.x, z: secondSwipe.z - firstSwipe.z }, { x: firstSwipe.x - initial.x, z: firstSwipe.z - initial.z });
+  const heading = s => Math.atan2(s.aimOffset.x, s.aimOffset.z);
+  const angularDistance = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  const initialHeading = heading(await snapshot());
+  for (let i = 1; i <= 4; i++) {
+    await swipe(i % 2 ? 620 : 530, 170, 90, 0);
+    assert.ok(angularDistance(heading(await snapshot()), initialHeading - i * Math.PI / 2) < 0.01);
+  }
+  for (let i = 1; i <= 4; i++) {
+    await swipe(650, 170, -90, 0);
+    assert.ok(angularDistance(heading(await snapshot()), initialHeading + i * Math.PI / 2) < 0.01);
+  }
   assert.equal((await snapshot()).shots, 0);
-  results.push('Repeated swipes accumulate equally from different starting positions; free look never shoots');
+  results.push('Actual touch swipes turn 90/180/270/full 360 in both directions with lift/replant');
+
+  // Reload using CDP touch, including with left thumb still moving and repeated taps.
+  const reloadButton = await center('#reload');
+  await touch('touchStart', [[1, move.x + 20, move.y], [2, fire.x, fire.y]]); await advance(0.25);
+  await touch('touchEnd', [[2, fire.x, fire.y]]); before = await snapshot(); assert.ok(before.ammo < 30);
+  await touch('touchStart', [[1, move.x + 20, move.y], [2, reloadButton.x, reloadButton.y]]);
+  after = await snapshot(); assert.ok(after.reloading > 0); assert.ok(after.move.x > 0); assert.equal(after.fireCount, 0);
+  assert.equal(await page.locator('#fire-label').textContent(), 'RELOAD');
+  await touch('touchEnd', [[2, reloadButton.x, reloadButton.y]]); await advance(0.15);
+  for (let i = 0; i < 3; i++) {
+    before = await snapshot();
+    await touch('touchStart', [[1, move.x + 20, move.y], [2, reloadButton.x, reloadButton.y]]);
+    await touch('touchEnd', [[2, reloadButton.x, reloadButton.y]]);
+    after = await snapshot(); assert.ok(after.reloading <= before.reloading, 'repeated taps do not restart timer');
+  }
+  await advance(1.4); after = await snapshot(); assert.equal(after.ammo, 30); assert.equal(after.reloading, 0);
+  await touch('touchStart', [[1, move.x + 20, move.y], [2, reloadButton.x, reloadButton.y]]);
+  assert.equal(await page.locator('#feedback').textContent(), 'MAGAZINE FULL');
+  await touch('touchEnd', []); results.push('Real touch reload works with moving thumb, repeated taps preserve progress, full-mag tap responds');
 
   await page.locator('#reset').click(); before = await snapshot();
-  const mobileTarget = before.targets[0], yaw = before.cameraYaw;
-  const dx = mobileTarget.x - before.x - before.aimOffset.x, dz = mobileTarget.z - before.z - before.aimOffset.z;
-  const pixelsPerUnit = 390 / 16;
-  await swipe(620, 170, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) * pixelsPerUnit, (dx * Math.sin(yaw) + dz * Math.cos(yaw)) * before.verticalScale * pixelsPerUnit);
+  const mobileTarget = before.targets[0];
+  const desired = Math.atan2(mobileTarget.x - before.x, mobileTarget.z - before.z);
+  const delta = Math.atan2(Math.sin(heading(before) - desired), Math.cos(heading(before) - desired));
+  await swipe(620, 170, delta * 180 / Math.PI, 0);
   const aimed = await snapshot();
   await touch('touchStart', [[2, fire.x, fire.y]]); await advance(0.4);
   after = await snapshot(); assert.ok(after.hits >= 3); closeOffset(after.aimOffset, aimed.aimOffset);
@@ -119,14 +146,16 @@ try {
   await page.screenshot({ path: 'artifacts/edge-indicator.png' });
   results.push('Off-screen aim keeps a visible, bounded edge indicator');
 
-  await page.locator('#reset').click(); before = await snapshot();
-  let p = { x: -4.65 * Math.sin(before.cameraYaw) * 390 / 16, y: 4.65 * Math.cos(before.cameraYaw) * before.verticalScale * 390 / 16 };
-  await swipe(620, 170, p.x, p.y); before = await snapshot();
-  assert.ok(Math.hypot(before.aimOffset.x, before.aimOffset.z) >= 2.999);
-  p = { x: -0.7 * Math.sin(before.cameraYaw) * 390 / 16, y: 0.7 * Math.cos(before.cameraYaw) * before.verticalScale * 390 / 16 };
-  await swipe(620, 170, p.x, p.y); after = await snapshot();
-  assert.ok(after.aimZ < -0.95 && Math.abs(after.aimX) < 0.1, 'original 14px flip is prevented');
-  results.push('Original near-player small swipe no longer reverses gun aim');
+  await page.locator('#reset').click();
+  const nearHeading = heading(await snapshot());
+  await swipe(620, 170, 0, 140); await swipe(620, 170, 0, 140);
+  assert.ok(Math.abs(Math.hypot((await snapshot()).aimOffset.x, (await snapshot()).aimOffset.z) - 3) < 0.01);
+  assert.ok(angularDistance(heading(await snapshot()), nearHeading) < 0.01);
+  await swipe(620, 170, 14, 0);
+  assert.ok(angularDistance(heading(await snapshot()), nearHeading) < 0.26, '14px near-player swipe remains small');
+  await swipe(620, 170, 180, 0);
+  assert.ok(angularDistance(heading(await snapshot()), nearHeading - 194 * Math.PI / 180) < 0.01);
+  results.push('Minimum aim distance retains fine control and allows immediate 180-degree reversal');
 
   await page.locator('#reset').click(); await page.locator('#sensitivity').click();
   assert.equal((await snapshot()).sensitivity, 1.35); await swipe(620, 170, 40, 0); const high = (await snapshot()).aimOffset.x;
@@ -153,6 +182,12 @@ try {
   }
   await touch('touchEnd', []); await advance(0.08); before = await snapshot();
   const range = Math.hypot(before.x, before.z + 8); assert.ok(range > 0.5 && range < 0.7, 'controlled point-blank position: ' + range);
+  await page.locator('#assist').click(); assert.equal((await snapshot()).assistEnabled, true);
+  await swipe(620, 170, -4, 0); before = await snapshot();
+  assert.ok(before.assistCorrection < 0 && Math.abs(before.assistCorrection) < 0.027, 'light near-target nudge is bounded');
+  await page.locator('#assist').click(); await advance(0.08); assert.equal((await snapshot()).assistCorrection, 0);
+  await swipe(620, 170, 4, 0);
+  results.push('Close-range assist adds a small visible correction and OFF removes it immediately');
   await touch('touchStart', [[2, fire.x, fire.y]]); await advance(0.4); await touch('touchEnd', []); after = await snapshot();
   assert.ok(after.hits >= 3 && after.targets[0].hp <= 25, 'actual close-range shots damage the dummy');
   await page.screenshot({ path: 'artifacts/point-blank-fixed.png' });
@@ -161,7 +196,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
   const portraitCanvas = await page.locator('#game').boundingBox();
   assert.equal(portraitCanvas.width, 390); assert.equal(portraitCanvas.height, 844);
-  for (const id of ['#move', '#fire-right', '#reload', '#swap', '#sound', '#sensitivity']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
+  for (const id of ['#move', '#fire-right', '#reload', '#swap', '#sound', '#sensitivity', '#assist']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
   await page.screenshot({ path: 'artifacts/portrait.png' });
   assert.deepEqual(errors, []); results.push('Landscape/portrait UI fits; no runtime or console errors');
   await writeFile('artifacts/browser-result.json', JSON.stringify({ pass: true, results, snapshot: await snapshot() }, null, 2));

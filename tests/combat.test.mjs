@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stickVector, worldVector, lookTravel, swipeAim, rayCircle, WeaponState } from '../src/combat.js';
+import { stickVector, worldVector, turnAim, aimAssist, rayCircle, WeaponState } from '../src/combat.js';
 test('stick deadzone, analog response, and clamping', () => {
   assert.deepEqual(stickVector(1, 1, 50), { x: 0, y: 0 });
   assert.equal(stickVector(100, 0, 50).x, 1);
@@ -36,23 +36,35 @@ test('fire rate, empty magazine, reload, and weapon swap state', () => {
   w.fire(); w.reload(); w.swap(); assert.equal(w.reloadRemaining, 0); assert.equal(w.ammo[0], 29); assert.equal(w.ammo[1], 12);
 });
 
-test('look travel preserves pixel distance, screen direction, and accumulated swipes', () => {
-  const yaw = Math.PI / 4, vertical = 0.65, scale = 0.04;
-  for (const [dx, dy] of [[80, 0], [0, -60], [-70, 35]]) {
-    const v = lookTravel(dx, dy, scale, vertical, yaw);
-    assert.ok(Math.abs((v.x * Math.cos(yaw) - v.z * Math.sin(yaw)) / scale - dx) < 1e-9);
-    assert.ok(Math.abs((v.x * Math.sin(yaw) + v.z * Math.cos(yaw)) * vertical / scale - dy) < 1e-9);
-    const half = lookTravel(dx / 2, dy / 2, scale, vertical, yaw);
-    assert.ok(Math.abs(half.x * 2 - v.x) < 1e-9 && Math.abs(half.z * 2 - v.z) < 1e-9);
+test('swipes turn 180, 270 and 360 degrees independent of radius and event chunking', () => {
+  for (const radius of [3, 5, 14]) {
+    for (const degrees of [180, 270, 360, -180, -360]) {
+      const v = turnAim(0, -radius, degrees, 0);
+      assert.ok(Math.abs(v.x / radius - Math.sin(Math.PI - degrees * Math.PI / 180)) < 1e-9);
+      assert.ok(Math.abs(v.z / radius - Math.cos(Math.PI - degrees * Math.PI / 180)) < 1e-9);
+      let small = { x: 0, z: -radius };
+      for (let i = 0; i < 30; i++) small = turnAim(small.x, small.z, degrees / 30, 0);
+      assert.ok(Math.hypot(small.x - v.x, small.z - v.z) < 1e-9);
+    }
+    const shortened = turnAim(0, -radius, 0, 1000);
+    assert.ok(Math.abs(shortened.z + 3) < 1e-9); // vertical radius adjustment never reverses heading
   }
 });
-
-test('near-player swipes retain a safe radius and do not flip from a tiny gesture', () => {
-  const near = swipeAim(0, -0.35, 0, 0.7);
-  assert.ok(near.z < 0 && Math.hypot(near.x, near.z) >= 3);
-  assert.deepEqual(swipeAim(0, -3, 0, 3), { x: 0, z: -3 });
-  const far = swipeAim(0, -5, 100, -100);
-  assert.ok(Math.abs(Math.hypot(far.x, far.z) - 14) < 1e-9);
-  const low = swipeAim(0, -5, 1, 0, 0.65), high = swipeAim(0, -5, 1, 0, 1.35);
-  assert.ok(high.x > low.x);
+test('light assist fades with range, ignores distant/dead/behind targets and never locks', () => {
+  const angle = 0, offset = 4 * Math.PI / 180;
+  const target = distance => [{ x: Math.sin(offset) * distance, z: Math.cos(offset) * distance, hp: 100 }];
+  const close = aimAssist(angle, 0, 0, target(2));
+  assert.ok(close > 0 && close <= Math.PI / 180 + 1e-9);
+  assert.ok(aimAssist(angle, 0, 0, target(4)) < close);
+  assert.equal(aimAssist(angle, 0, 0, target(7)), 0);
+  assert.equal(aimAssist(angle, 0, 0, [{ x: 0, z: -2, hp: 100 }]), 0);
+  assert.equal(aimAssist(angle, 0, 0, [{ ...target(2)[0], hp: 0 }]), 0);
+  assert.equal(aimAssist(Math.PI / 2, 0, 0, target(2)), 0);
+});
+test('reload provides explicit full/busy/started status without restarting repeated taps', () => {
+  const w = new WeaponState(); assert.equal(w.reload(), 'full');
+  w.fire(); assert.equal(w.reload(), 'started'); w.tick(0.2);
+  const remaining = w.reloadRemaining;
+  assert.equal(w.reload(), 'busy'); assert.equal(w.reloadRemaining, remaining);
+  w.tick(2); assert.equal(w.ammo[0], 30); assert.equal(w.reload(), 'full');
 });
