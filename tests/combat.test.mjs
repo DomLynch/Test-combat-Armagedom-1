@@ -54,7 +54,7 @@ test('light assist fades with range, ignores distant/dead/behind targets and nev
   const angle = 0, offset = 4 * Math.PI / 180;
   const target = distance => [{ x: Math.sin(offset) * distance, z: Math.cos(offset) * distance, hp: 100 }];
   const close = aimAssist(angle, 0, 0, target(2));
-  assert.ok(Math.abs(close - 1.1 * Math.PI / 180) < 1e-9, '10% more correction than the previous one-degree nudge');
+  assert.ok(Math.abs(close - 1.43 * Math.PI / 180) < 1e-9, '30% more correction than the previous 1.1-degree nudge');
   assert.ok(Math.abs(aimAssist(angle, 0, 0, target(4)) - close / 2) < 1e-9);
   assert.ok(Math.abs(aimAssist(angle, 0, 0, target(6))) < 1e-12, 'zero pull at the range boundary within floating-point precision');
   const outside = 6.01 * Math.PI / 180;

@@ -293,17 +293,17 @@ try {
   const rawAngle = Math.atan2(before.aimOffset.x, before.aimOffset.z);
   const targetAngle = Math.atan2(-before.x, -8 - before.z);
   const aimError = Math.atan2(Math.sin(targetAngle - rawAngle), Math.cos(targetAngle - rawAngle));
-  const expectedAssist = aimError * 0.275; // Point blank retains the full 10% stronger nudge.
+  const expectedAssist = aimError * 0.3575; // Point blank retains the full 30% stronger than combat 10 nudge.
   assert.equal(before.weapon, 'RIFLE');
-  assert.ok(before.assistCorrection < 0 && Math.abs(before.assistCorrection) < 0.029, 'light near-target nudge is bounded');
-  assert.ok(Math.abs(before.assistCorrection - expectedAssist) < 1e-8, 'rifle uses 10% stronger correction');
+  assert.ok(before.assistCorrection < 0 && Math.abs(before.assistCorrection) < 0.038, 'light near-target nudge is bounded');
+  assert.ok(Math.abs(before.assistCorrection - expectedAssist) < 1e-8, 'rifle uses 30% stronger than combat 10 correction');
   await page.locator('#swap').click(); await advance(0.08);
   const pistolAssist = await snapshot(); assert.equal(pistolAssist.weapon, 'PISTOL');
-  assert.ok(Math.abs(pistolAssist.assistCorrection - expectedAssist) < 1e-8, 'pistol uses the same 10% stronger correction');
+  assert.ok(Math.abs(pistolAssist.assistCorrection - expectedAssist) < 1e-8, 'pistol uses the same 30% stronger than combat 10 correction');
   await page.locator('#swap').click(); await advance(0.25);
   await page.locator('#assist').click(); await advance(0.08); assert.equal((await snapshot()).assistCorrection, 0);
   await swipe(620, 170, 4, 0);
-  results.push('Rifle and pistol apply 10% stronger close-range assist; OFF removes it immediately');
+  results.push('Rifle and pistol apply 30% stronger than combat 10 close-range assist; OFF removes it immediately');
   await touch('touchStart', [[2, fire.x, fire.y]]); await advance(0.4); await touch('touchEnd', []); after = await snapshot();
   assert.ok(after.hits >= 3 && after.targets[0].hp <= 25, 'actual close-range shots damage the dummy');
   await page.screenshot({ path: 'artifacts/point-blank-fixed.png' });

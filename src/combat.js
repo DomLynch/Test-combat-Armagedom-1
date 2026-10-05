@@ -38,7 +38,7 @@ export function aimAssist(angle, ox, oz, targets) {
     const delta = Math.atan2(Math.sin(Math.atan2(t.x - ox, t.z - oz) - angle), Math.cos(Math.atan2(t.x - ox, t.z - oz) - angle));
     if (Math.abs(delta) >= best) continue;
     best = Math.abs(delta);
-    correction = delta * 0.275 * Math.max(0, Math.min(1, (6 - distance) / 4));
+    correction = delta * 0.3575 * Math.max(0, Math.min(1, (6 - distance) / 4));
   }
   return correction;
 }

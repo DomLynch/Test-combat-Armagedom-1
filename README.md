@@ -4,7 +4,7 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-10)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-11)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
@@ -15,7 +15,7 @@ Opens straight into the range with a viewport-filling canvas and no start popup 
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
 - Swipe-to-aim alone never fires. Feet, hips, torso and gun share one smoothed heading. Shots follow the visible gun direction. The isometric camera keeps its fixed angle and follows the player.
 - RIFLE/PISTOL switches weapon; RELOAD responds on contact and refills with unlimited reserve. Repeated taps retain reload progress; a full magazine gives explicit feedback.
-- Assist: Light gives touch aim a small nudge only within six degrees of a nearby living target. It corrects at most 1.65° up close (10% stronger than the previous light setting) and fades to zero at six arena units. Toggle Assist: OFF for fully manual aim.
+- Assist: Light gives touch aim a small nudge only within six degrees of a nearby living target. It corrects at most 2.145° up close (30% stronger than combat 10) and fades to zero at six arena units. Toggle Assist: OFF for fully manual aim.
 - Desktop: WASD/arrows, mouse aim, left mouse/Space fire, right mouse focus, R reload, Q switch.
 - Landscape recommended; safe-area padding and portrait layout included.
 

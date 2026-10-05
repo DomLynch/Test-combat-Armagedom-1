@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, turnAim, followAngle, aimAssist, targetOnRay, rayCircle } from './combat.js?v=combat-10';
-import { createCombatAudio } from './audio.js?v=combat-10';
-import { installTouchGuards } from './touch.js?v=combat-10';
-import { createInput, bindAction } from './input.js?v=combat-10';
+import { WeaponState, worldVector, turnAim, followAngle, aimAssist, targetOnRay, rayCircle } from './combat.js?v=combat-11';
+import { createCombatAudio } from './audio.js?v=combat-11';
+import { installTouchGuards } from './touch.js?v=combat-11';
+import { createInput, bindAction } from './input.js?v=combat-11';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
