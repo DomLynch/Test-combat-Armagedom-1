@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, turnAim, followAngle, aimAssist, rayCircle } from './combat.js?v=combat-7';
-import { createCombatAudio } from './audio.js?v=combat-7';
-import { createInput, bindAction } from './input.js?v=combat-7';
+import { WeaponState, worldVector, turnAim, followAngle, aimAssist, rayCircle } from './combat.js?v=combat-8';
+import { createCombatAudio } from './audio.js?v=combat-8';
+import { createInput, bindAction } from './input.js?v=combat-8';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -92,7 +92,7 @@ const tracers = Array.from({ length: 16 }, () => {
 let tracerIndex = 0, started = true, angle = 0, aimX = 0, aimZ = -1, kick = 0, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
 const aimOffset = new THREE.Vector2(0, -5);
 const audio = createCombatAudio();
-let assistEnabled = true, assistCorrection = 0;
+let assistEnabled = true, assistCorrection = 0, manualAimRemaining = 0, movementFacing = false;
 let sensitivityIndex = 1, soundEnabled = true, hitMarkerTime = 0;
 const sensitivities = [0.65, 1, 1.35], sensitivityNames = ['Low', 'Normal', 'High'];
 const weapons = new WeaponState();
@@ -110,7 +110,7 @@ $('sensitivity').onclick = () => { sensitivityIndex = (sensitivityIndex + 1) % s
 $('sound').onclick = () => { soundEnabled = !soundEnabled; audio.setEnabled(soundEnabled); $('sound').textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`; $('sound').setAttribute('aria-pressed', String(soundEnabled)); };
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
-  input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
+  input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; manualAimRemaining = 0; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
   barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
   for (const t of tracers) { t.remaining = 0; t.line.visible = false; } updateCamera(0, true); showFeedback('Range reset');
 };
@@ -184,16 +184,26 @@ renderer.setAnimationLoop(time => {
     player.position.z = THREE.MathUtils.clamp(player.position.z + move.z * dt * speed, -13.1, 13.1);
     if (moving) { leftLeg.rotation.x = Math.sin(elapsed * 14) * 0.36; rightLeg.rotation.x = -leftLeg.rotation.x; } else leftLeg.rotation.x = rightLeg.rotation.x = 0;
     updateCamera(dt);
+    manualAimRemaining = Math.max(0, manualAimRemaining - dt);
     if (input.lookDelta.x || input.lookDelta.y) {
+      manualAimRemaining = 0.18;
       const next = turnAim(aimOffset.x, aimOffset.y, input.lookDelta.x, input.lookDelta.y, sensitivities[sensitivityIndex], (camera.top - camera.bottom) / innerHeight);
       aimOffset.set(next.x, next.z); input.lookDelta.x = input.lookDelta.y = 0;
     } else if (input.pointerAim) {
       pointer.set(input.pointerAim.x / innerWidth * 2 - 1, 1 - input.pointerAim.y / innerHeight * 2); raycaster.setFromCamera(pointer, camera);
       if (raycaster.ray.intersectPlane(aimPlane, mouseWorld)) aimOffset.set(mouseWorld.x - player.position.x, mouseWorld.z - player.position.z);
     }
+    // Walking turns the whole character. Only an active aiming drag or held fire
+    // overrides it; an idle right thumb at the screen edge cannot lock facing.
+    const manualAim = input.pointerAim || input.fires.size || (input.looking && manualAimRemaining > 0);
+    movementFacing = moving && !manualAim;
+    if (movementFacing) {
+      const radius = Math.max(3, aimOffset.length()), length = Math.hypot(move.x, move.z);
+      aimOffset.set(move.x / length * radius, move.z / length * radius);
+    }
     const aimLength = aimOffset.length();
     const rawAngle = Math.atan2(aimOffset.x, aimOffset.y);
-    assistCorrection = assistEnabled && input.touchAim ? aimAssist(rawAngle, player.position.x, player.position.z, targets) : 0;
+    assistCorrection = assistEnabled && input.touchAim && !movementFacing ? aimAssist(rawAngle, player.position.x, player.position.z, targets) : 0;
     if (aimLength > 0.15) {
       const desiredYaw = Math.atan2(-Math.sin(rawAngle + assistCorrection), -Math.cos(rawAngle + assistCorrection));
       angle = followAngle(angle, desiredYaw, dt);
@@ -235,7 +245,7 @@ window.__combat = {
   snapshot() {
     const worldYaw = group => { const direction = group.getWorldDirection(new THREE.Vector3()); return Math.atan2(direction.x, direction.z); };
     const playerScreen = new THREE.Vector3(player.position.x, 1, player.position.z).project(camera);
-    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, looking: input.looking, controls: 'two-thumb-turn', assistEnabled, assistCorrection, sensitivity: sensitivities[sensitivityIndex], audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
+    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, looking: input.looking, controls: 'move-facing-aim-override', movementFacing, assistEnabled, assistCorrection, sensitivity: sensitivities[sensitivityIndex], audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
       targets: targets.map(t => { const v = new THREE.Vector3(t.x, 1.25, t.z).project(camera); return { x: t.x, z: t.z, hp: t.hp, screenX: (v.x + 1) / 2 * innerWidth, screenY: (1 - v.y) / 2 * innerHeight }; }) };
   }
 };

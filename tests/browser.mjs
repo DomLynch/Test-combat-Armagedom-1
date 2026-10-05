@@ -57,7 +57,7 @@ try {
   const closeOffset = (a, b) => { assert.ok(Math.abs(a.x - b.x) < 1e-5 && Math.abs(a.z - b.z) < 1e-5, 'reticle offset preserved: ' + JSON.stringify({ a, b })); };
   assert.equal(await page.locator('#aim, #fire-left, #mode, #focus').count(), 0, 'no second joystick or claw controls');
   before = await snapshot();
-  assert.equal(before.controls, 'two-thumb-turn');
+  assert.equal(before.controls, 'move-facing-aim-override');
   await touch('touchStart', [[1, move.x, move.y], [2, 620, 170]]);
   await advance(0.08); closeOffset((await snapshot()).aimOffset, before.aimOffset);
   await touch('touchMove', [[1, move.x + 40, move.y], [2, 685, 195]]);
@@ -123,6 +123,43 @@ try {
   aligned(await snapshot()); assert.ok((await snapshot()).move.x>0);
   await touch('touchEnd',[]); await page.locator('#reset').click(); await advance(0.1);
   results.push('Feet, hips and torso turn together at intermediate angles and through 360 both ways, including strafing; shot direction matches body');
+
+  // No right swipe is required to face south or any other walking direction.
+  await page.locator('#reset').click(); await touch('touchStart',[[1,move.x,move.y]]);
+  for (const degrees of [0,37,90,135,180,225,270,315,359]) {
+    const a=degrees*Math.PI/180;
+    await touch('touchMove',[[1,move.x+Math.sin(a)*38,move.y-Math.cos(a)*38]]);
+    before=await snapshot(); await advance(0.4);
+    after=await snapshot(); aligned(after);
+    const dx=after.x-before.x,dz=after.z-before.z,length=Math.hypot(dx,dz);
+    assert.ok(length>0.5 && (after.aimX*dx+after.aimZ*dz)/length>0.995, 'whole-body faces actual walking direction: '+JSON.stringify({degrees,dx,dz,aimX:after.aimX,aimZ:after.aimZ,move:after.move,movementFacing:after.movementFacing}));
+    assert.equal(after.movementFacing,true); assert.equal(after.shots,0);
+    if(degrees===180) await page.screenshot({path:'artifacts/walk-south.png'});
+  }
+  await touch('touchEnd',[]); await advance(0.35); before=await snapshot();
+  await advance(0.2); after=await snapshot();
+  assert.equal(after.x,before.x); assert.equal(after.z,before.z);
+  assert.ok(angularDistance(after.bodyYaw,before.bodyYaw)<0.001,'stopping retains walking heading');
+
+  // A right thumb resting at the bottom edge must not prevent left-stick turning.
+  await page.locator('#reset').click();
+  await touch('touchStart',[[1,move.x,move.y+38],[2,620,385]]); await advance(0.4);
+  after=await snapshot(); assert.equal(after.looking,true); assert.equal(after.movementFacing,true); aligned(after);
+  const downYaw=after.bodyYaw; const downOffset=after.aimOffset;
+  await touch('touchMove',[[1,move.x,move.y+38],[2,650,385]]); await advance(0.09);
+  after=await snapshot(); assert.equal(after.movementFacing,false,'active swipe temporarily owns aim');
+  await advance(0.35); after=await snapshot(); assert.equal(after.movementFacing,true);
+  assert.ok(angularDistance(after.bodyYaw,downYaw)<0.01,'idle thumb returns to south without moving below screen');
+  await page.screenshot({path:'artifacts/idle-thumb-south.png'});
+  await touch('touchEnd',[[2,650,385]]);
+  await touch('touchStart',[[1,move.x,move.y+38],[2,fire.x,fire.y]]);
+  await touch('touchMove',[[1,move.x,move.y+38],[2,fire.x-90,fire.y]]); await advance(0.35);
+  after=await snapshot(); assert.equal(after.movementFacing,false); assert.ok(angularDistance(after.bodyYaw,downYaw)>1.2,'held FIRE permits deliberate strafing aim');
+  const fireShots=after.shots; await touch('touchEnd',[[2,fire.x-90,fire.y]]); await advance(0.35);
+  after=await snapshot(); assert.equal(after.movementFacing,true); assert.equal(after.shots,fireShots);
+  assert.ok(angularDistance(after.bodyYaw,downYaw)<0.01,'fire release hands facing back to south');
+  await touch('touchEnd',[]); await page.locator('#reset').click(); await advance(0.1);
+  results.push('Left stick alone faces every walking direction; idle thumb at bottom cannot lock facing; aiming/fire temporarily override and release restores movement facing');
 
   // Reload using CDP touch, including with left thumb still moving and repeated taps.
   const reloadButton = await center('#reload');

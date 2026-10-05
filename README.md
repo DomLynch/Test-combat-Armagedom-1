@@ -4,11 +4,11 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-7)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-8)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
-- Left stick moves. Swipe sideways on the free right half to turn the whole character smoothly through 360°. Swipe up/down to adjust reticle distance. Lift and replant without an aim jump.
+- Left stick moves and turns your whole body towards travel, including south and all intermediate directions. Swipe sideways on the free right half to turn the whole character smoothly through 360°. Swipe up/down to adjust reticle distance. While walking, an active aiming drag or held FIRE temporarily overrides movement facing. Release returns to travel direction; an idle free-look thumb returns after a short pause, even if it stays touching the screen edge. Stopping keeps the last facing.
 - Hold the right **FIRE** button to shoot. Drag the same thumb while holding to adjust aim, including outside the button. Left thumb can keep moving throughout: only two fingers needed.
 - Aim sensitivity cycles Low/Normal/High. Normal sensitivity turns one degree per horizontal pixel; heading is independent of reticle distance, so short-radius aiming cannot block turns.
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
