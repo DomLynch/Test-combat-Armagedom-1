@@ -23,10 +23,13 @@ try {
   await page.keyboard.down('Space');
   await page.waitForTimeout(520); await page.keyboard.up('Space');
   let after = await snapshot(); assert.ok(after.shots >= 3); assert.ok(after.hits >= 3); results.push('Mouse aim and held fire hit real targets');
-  await page.locator('#swap').click(); await page.waitForTimeout(100);
+  await page.locator('#swap').click(); await page.waitForTimeout(250);
   assert.equal((await snapshot()).weapon, 'PISTOL');
-  await page.locator('#reload').click(); await page.waitForTimeout(1000);
-  assert.equal((await snapshot()).reloading, 0); results.push('Weapon switching and reload UI');
+  await page.keyboard.down('Space'); await page.waitForTimeout(80); await page.keyboard.up('Space');
+  assert.equal((await snapshot()).ammo, 11);
+  await page.locator('#reload').click(); assert.ok((await snapshot()).reloading > 0);
+  await page.waitForTimeout(1050);
+  assert.equal((await snapshot()).reloading, 0); assert.equal((await snapshot()).ammo, 12); results.push('Weapon switching and actual magazine reload through UI');
   await page.locator('#reset').click();
   const center = async id => { const b = await page.locator(id).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
   const move = await center('#move'), aim = await center('#aim'), fire = await center('#fire-left');
