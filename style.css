@@ -60,3 +60,5 @@ p { color: #b4c3c7; font-size: 14px; line-height: 1.65; }
 .fire.reloading .reload-ring { opacity: 1; }
 .fire.reloading { border-color: #718187; }
 .fire.reloading #fire-label { font-size: 11px; letter-spacing: 0; }
+
+#aim-overlays { position: fixed; inset: 0; overflow: hidden; contain: strict; pointer-events: none; z-index: 2; }

@@ -159,6 +159,8 @@ try {
   results.push('Original ~0.62-unit point-blank reproduction now hits and damages target');
   await page.screenshot({ path: 'artifacts/landscape.png' });
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
+  const portraitCanvas = await page.locator('#game').boundingBox();
+  assert.equal(portraitCanvas.width, 390); assert.equal(portraitCanvas.height, 844);
   for (const id of ['#move', '#fire-right', '#reload', '#swap', '#sound', '#sensitivity']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
   await page.screenshot({ path: 'artifacts/portrait.png' });
   assert.deepEqual(errors, []); results.push('Landscape/portrait UI fits; no runtime or console errors');
