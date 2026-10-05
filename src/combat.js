@@ -52,6 +52,16 @@ export function rayCircle(ox, oz, dx, dz, cx, cz, radius) {
   if (along + half < 0) return Infinity;
   return Math.max(0, along - half);
 }
+// First live opponent intersected by the actual gun ray, independently of cursor distance.
+export function targetOnRay(ox, oz, dx, dz, targets, maximum = 32) {
+  let selected = -1, distance = maximum;
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i]; if (t.hp <= 0) continue;
+    const entry = rayCircle(ox, oz, dx, dz, t.x, t.z, 0.58);
+    if (entry < distance) { distance = entry; selected = i; }
+  }
+  return selected;
+}
 export class WeaponState {
   constructor() { this.reset(); }
   reset() { this.index = 0; this.ammo = WEAPONS.map(w => w.capacity); this.cooldown = 0; this.reloadRemaining = 0; }

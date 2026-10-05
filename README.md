@@ -4,13 +4,14 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=combat-8)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-9)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
 - Left stick moves and turns your whole body towards travel, including south and all intermediate directions. Swipe sideways on the free right half to turn the whole character smoothly through 360°. Swipe up/down to adjust reticle distance. While walking, an active aiming drag or held FIRE temporarily overrides movement facing. Release returns to travel direction; an idle free-look thumb returns after a short pause, even if it stays touching the screen edge. Stopping keeps the last facing.
 - Hold the right **FIRE** button to shoot. Drag the same thumb while holding to adjust aim, including outside the button. Left thumb can keep moving throughout: only two fingers needed.
 - Aim sensitivity cycles Low/Normal/High. Normal sensitivity turns one degree per horizontal pixel; heading is independent of reticle distance, so short-radius aiming cannot block turns.
+- The targeting ring and arrow sit on the first living opponent in the actual line of fire, follow its movement and release when it leaves that line or dies. Aim correction remains light; this selection does not auto-fire or hard-lock the gun.
 - Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
 - Swipe-to-aim alone never fires. Feet, hips, torso and gun share one smoothed heading. Shots follow the visible gun direction. The isometric camera keeps its fixed angle and follows the player.
 - RIFLE/PISTOL switches weapon; RELOAD responds on contact and refills with unlimited reserve. Repeated taps retain reload progress; a full magazine gives explicit feedback.
@@ -24,6 +25,8 @@ npm start
 ```
 
 Open http://localhost:4173 or the Mac's LAN IP on a phone on the same Wi-Fi. Three.js 0.186.1 is vendored with its MIT license; runtime uses no third-party CDN. Update vendor files intentionally from the pinned npm package.
+
+Safari zoom protections use fixed viewport bounds, whole-page touch-action rules, non-passive native gesture blockers and game-only rapid touch-end suppression. A valid move + aim/fire touch pair remains allowed; extra/unowned contacts cannot trigger native pinching. Fire, reload and swap act on pointer contact, with brief fire taps queued until the next render frame. Safari needs physical-device verification; Chromium checks establish event cancellation and control continuity. [Apple event guidance](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/HandlingEvents/HandlingEvents.html).
 
 ## Control rationale
 

@@ -1,10 +1,12 @@
 import * as THREE from 'three';
-import { WeaponState, worldVector, turnAim, followAngle, aimAssist, rayCircle } from './combat.js?v=combat-8';
-import { createCombatAudio } from './audio.js?v=combat-8';
-import { createInput, bindAction } from './input.js?v=combat-8';
+import { WeaponState, worldVector, turnAim, followAngle, aimAssist, targetOnRay, rayCircle } from './combat.js?v=combat-9';
+import { createCombatAudio } from './audio.js?v=combat-9';
+import { installTouchGuards } from './touch.js?v=combat-9';
+import { createInput, bindAction } from './input.js?v=combat-9';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
+installTouchGuards();
 let renderer;
 try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'low-power' }); }
 catch { $('welcome').classList.remove('hidden'); $('welcome').innerHTML = '<div class="welcome-card"><h1>WebGL unavailable</h1><p>Open this link in Safari or Chrome with hardware acceleration enabled.</p></div>'; throw new Error('WebGL unavailable'); }
@@ -92,6 +94,7 @@ const tracers = Array.from({ length: 16 }, () => {
 let tracerIndex = 0, started = true, angle = 0, aimX = 0, aimZ = -1, kick = 0, flashTime = 0, shots = 0, hits = 0, kills = 0, elapsed = 0, previousTime = 0, hudTime = 0, feedbackTime = 0;
 const aimOffset = new THREE.Vector2(0, -5);
 const audio = createCombatAudio();
+let targetIndex = -1, lastHitX = 0, lastHitZ = 0;
 let assistEnabled = true, assistCorrection = 0, manualAimRemaining = 0, movementFacing = false;
 let sensitivityIndex = 1, soundEnabled = true, hitMarkerTime = 0;
 const sensitivities = [0.65, 1, 1.35], sensitivityNames = ['Low', 'Normal', 'High'];
@@ -110,7 +113,7 @@ $('sensitivity').onclick = () => { sensitivityIndex = (sensitivityIndex + 1) % s
 $('sound').onclick = () => { soundEnabled = !soundEnabled; audio.setEnabled(soundEnabled); $('sound').textContent = `Sound: ${soundEnabled ? 'ON' : 'OFF'}`; $('sound').setAttribute('aria-pressed', String(soundEnabled)); };
 $('fullscreen').onclick = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { showFeedback('Full screen unavailable in this browser'); } };
 $('reset').onclick = () => {
-  input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; manualAimRemaining = 0; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
+  input.clear(); weapons.reset(); player.position.set(0, 0, 3); shots = hits = kills = elapsed = 0; aimX = 0; aimZ = -1; aimOffset.set(0, -5); angle = 0; targetIndex = -1; manualAimRemaining = 0; movementFacing = false; player.rotation.y = 0; kick = flashTime = hitMarkerTime = 0;
   barrel.scale.z = 0.95; barrel.position.z = -0.76; for (const t of targets) { t.hp = 100; t.down = t.flash = 0; t.group.visible = true; }
   for (const t of tracers) { t.remaining = 0; t.line.visible = false; } updateCamera(0, true); showFeedback('Range reset');
 };
@@ -124,7 +127,7 @@ function resize() {
 }
 window.addEventListener('resize', resize); resize();
 const pointer = new THREE.Vector2(), raycaster = new THREE.Raycaster(), aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.25), mouseWorld = new THREE.Vector3();
-const muzzle = new THREE.Vector3(), reticleScreen = new THREE.Vector3();
+const muzzle = new THREE.Vector3(), reticleScreen = new THREE.Vector3(), markerScreen = new THREE.Vector3();
 function setLine(line, x1, y1, z1, x2, y2, z2) {
   const p = line.geometry.attributes.position; p.setXYZ(0, x1, y1, z1); p.setXYZ(1, x2, y2, z2); p.needsUpdate = true; line.geometry.computeBoundingSphere();
 }
@@ -149,6 +152,7 @@ function shoot(moving) {
   if (hitTarget) {
     hits++; hitTarget.hp = Math.max(0, hitTarget.hp - weapons.weapon.damage); hitTarget.flash = 0.1;
     if (!hitTarget.hp) { kills++; hitTarget.down = 2; showFeedback('TARGET DOWN'); }
+    lastHitX = hitTarget.x; lastHitZ = hitTarget.z;
     hitMarkerTime = 0.2; $('hit-marker').classList.toggle('kill', !hitTarget.hp); audio.hit(!hitTarget.hp);
     if (navigator.vibrate) navigator.vibrate(8);
   }
@@ -175,6 +179,12 @@ renderer.setAnimationLoop(time => {
     const wasReloading = weapons.reloadRemaining > 0;
     elapsed += dt; weapons.tick(dt);
     if (wasReloading && !weapons.reloadRemaining) { showFeedback('RELOADED'); updateHud(); }
+    // Update opponent positions before aiming so marker and model share this frame.
+    for (const target of targets) {
+      if (target.down > 0) { target.down -= dt; target.group.visible = false; if (target.down <= 0) { target.hp = 100; target.group.visible = true; } }
+      if (target.moving) target.x = target.baseX + Math.sin(elapsed * 0.9) * 2;
+      target.group.position.x = target.x;
+    }
     const keys = input.keys;
     let mx = input.move.x, my = input.move.y;
     if (keys.size) { mx += Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')); my += Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')); }
@@ -195,7 +205,7 @@ renderer.setAnimationLoop(time => {
     }
     // Walking turns the whole character. Only an active aiming drag or held fire
     // overrides it; an idle right thumb at the screen edge cannot lock facing.
-    const manualAim = input.pointerAim || input.fires.size || (input.looking && manualAimRemaining > 0);
+    const manualAim = input.pointerAim || input.fires.size || input.firePressed || (input.looking && manualAimRemaining > 0);
     movementFacing = moving && !manualAim;
     if (movementFacing) {
       const radius = Math.max(3, aimOffset.length()), length = Math.hypot(move.x, move.z);
@@ -213,23 +223,31 @@ renderer.setAnimationLoop(time => {
     player.rotation.y = angle;
     kick *= Math.exp(-dt * 22); gun.position.z = kick;
     player.updateMatrixWorld(true);
-    if (input.fires.size) shoot(moving);
+    if (input.fires.size || input.firePressed) shoot(moving);
+    input.firePressed = false;
     flashTime = Math.max(0, flashTime - dt); flash.visible = flashTime > 0;
-    reticle.position.set(player.position.x + aimX * aimLength, 1.25, player.position.z + aimZ * aimLength);
+    const wallX = aimX ? ((aimX > 0 ? 14 : -14) - player.position.x) / aimX : Infinity;
+    const wallZ = aimZ ? ((aimZ > 0 ? 14 : -14) - player.position.z) / aimZ : Infinity;
+    targetIndex = targetOnRay(player.position.x, player.position.z, aimX, aimZ, targets, Math.min(32, wallX, wallZ));
+    const target = targetIndex >= 0 ? targets[targetIndex] : null;
+    reticle.position.set(target ? target.x : player.position.x + aimX * aimLength, 1.25, target ? target.z : player.position.z + aimZ * aimLength);
+    reticle.scale.setScalar(target ? 2.8 : 1);
     reticleScreen.copy(reticle.position).project(camera);
     const rx = (reticleScreen.x + 1) * innerWidth / 2, ry = (1 - reticleScreen.y) * innerHeight / 2;
     const edge = rx < 26 || ry < 26 || rx > innerWidth - 26 || ry > innerHeight - 26;
     const ex = THREE.MathUtils.clamp(rx, 26, innerWidth - 26), ey = THREE.MathUtils.clamp(ry, 26, innerHeight - 26);
     $('aim-edge').classList.toggle('hidden', !edge);
     $('aim-edge').style.transform = `translate(${ex}px, ${ey}px) translate(-50%, -50%) rotate(${Math.atan2(ry - innerHeight / 2, rx - innerWidth / 2)}rad)`;
+    markerScreen.set(reticle.position.x, 2.65, reticle.position.z).project(camera);
+    $('target-marker').classList.toggle('hidden', !target || edge);
+    $('target-marker').style.transform = `translate(${(markerScreen.x + 1) * innerWidth / 2}px, ${(1 - markerScreen.y) * innerHeight / 2}px) translate(-50%, -50%)`;
     hitMarkerTime = Math.max(0, hitMarkerTime - dt);
     $('hit-marker').style.opacity = hitMarkerTime > 0 ? '1' : '0';
-    $('hit-marker').style.transform = `translate(${ex}px, ${ey}px) translate(-50%, -50%)`;
+    markerScreen.set(lastHitX, 1.25, lastHitZ).project(camera);
+    $('hit-marker').style.transform = `translate(${THREE.MathUtils.clamp((markerScreen.x + 1) * innerWidth / 2, 26, innerWidth - 26)}px, ${THREE.MathUtils.clamp((1 - markerScreen.y) * innerHeight / 2, 26, innerHeight - 26)}px) translate(-50%, -50%)`;
     setLine(sight, player.position.x, 1.25, player.position.z, reticle.position.x, 1.25, reticle.position.z);
     for (const target of targets) {
-      if (target.down > 0) { target.down -= dt; target.group.visible = false; if (target.down <= 0) { target.hp = 100; target.group.visible = true; } }
-      if (target.moving) target.x = target.baseX + Math.sin(elapsed * 0.9) * 2;
-      target.group.position.x = target.x; target.flash = Math.max(0, target.flash - dt);
+      target.flash = Math.max(0, target.flash - dt);
       target.bodyMaterial.color.set(target.flash ? '#fff3dd' : '#d98e7d'); target.health.scale.x = target.hp / 100;
     }
     for (const tracer of tracers) { tracer.remaining = Math.max(0, tracer.remaining - dt); tracer.line.visible = tracer.remaining > 0; }
@@ -245,7 +263,7 @@ window.__combat = {
   snapshot() {
     const worldYaw = group => { const direction = group.getWorldDirection(new THREE.Vector3()); return Math.atan2(direction.x, direction.z); };
     const playerScreen = new THREE.Vector3(player.position.x, 1, player.position.z).project(camera);
-    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, looking: input.looking, controls: 'move-facing-aim-override', movementFacing, assistEnabled, assistCorrection, sensitivity: sensitivities[sensitivityIndex], audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
+    return { started, simTime: elapsed, x: player.position.x, z: player.position.z, aimX, aimZ, bodyYaw: worldYaw(player), legsYaw: worldYaw(legs), torsoYaw: worldYaw(torso), shots, hits, weapon: weapons.weapon.name, ammo: weapons.ammo[weapons.index], reloading: weapons.reloadRemaining, move: { ...input.move }, aimOffset: { x: aimOffset.x, z: aimOffset.y }, looking: input.looking, controls: 'move-facing-aim-override', movementFacing, selectedTarget: targetIndex < 0 ? null : targetIndex, reticle: { x: reticle.position.x, z: reticle.position.z }, targetMarker: !$('target-marker').classList.contains('hidden'), assistEnabled, assistCorrection, sensitivity: sensitivities[sensitivityIndex], audio: audio.snapshot(), hitMarker: hitMarkerTime > 0, aimEdge: !$('aim-edge').classList.contains('hidden'), fireCount: input.fires.size, drawCalls: renderer.info.render.calls, view: 'isometric-v2', cameraYaw, verticalScale, cameraX: camera.position.x, cameraZ: camera.position.z, playerScreenX: (playerScreen.x + 1) / 2 * innerWidth, playerScreenY: (1 - playerScreen.y) / 2 * innerHeight,
       targets: targets.map(t => { const v = new THREE.Vector3(t.x, 1.25, t.z).project(camera); return { x: t.x, z: t.z, hp: t.hp, screenX: (v.x + 1) / 2 * innerWidth, screenY: (1 - v.y) / 2 * innerHeight }; }) };
   }
 };

@@ -33,12 +33,18 @@ try {
   };
   let before = await snapshot();
   assert.equal(before.view, 'isometric-v2');
+  assert.equal(before.selectedTarget,0); assert.equal(before.targetMarker,true);
+  assert.equal(before.reticle.x,before.targets[0].x); assert.equal(before.reticle.z,before.targets[0].z);
+  assert.ok(Math.abs(before.reticle.z-(before.z+before.aimOffset.z))>3,'marker reaches opponent instead of halfway cursor');
+  await page.screenshot({path:'artifacts/target-marker.png'});
+  results.push('Target marker/ring are centred on the first actual opponent in the gun ray, beyond the old halfway cursor');
   const target = before.targets[0];
   await page.mouse.move(target.screenX, target.screenY);
   await page.keyboard.down('Space');
   await advance(0.08); assert.equal((await snapshot()).hitMarker, true); assert.equal(await page.locator('#hit-marker').evaluate(el => el.style.opacity), '1');
   await advance(0.44); await page.keyboard.up('Space');
   let after = await snapshot(); assert.ok(after.shots >= 3); assert.ok(after.hits >= 3); results.push('Mouse aim and held fire hit real targets');
+  assert.notEqual(after.selectedTarget,0); assert.equal(after.targetMarker,false,'dead opponent is released');
   await page.locator('#swap').click(); await advance(0.25);
   assert.equal((await snapshot()).weapon, 'PISTOL');
   await page.keyboard.down('Space'); await advance(0.08); await page.keyboard.up('Space');
@@ -201,7 +207,7 @@ try {
   await page.setViewportSize({ width: 844, height: 390 }); await advance(0.05);
   results.push('Orientation/viewport change clears held controls');
   await page.locator('#reset').click();
-  await swipe(620, 170, 0, -210); await swipe(620, 170, 0, -150);
+  await swipe(620, 170, -45, -210); await swipe(620, 170, 0, -150);
   assert.equal((await snapshot()).aimEdge, true);
   const edge = await page.locator('#aim-edge').boundingBox();
   assert.ok(edge.x >= 0 && edge.y >= 0 && edge.x + edge.width <= 844 && edge.y + edge.height <= 390);
@@ -225,6 +231,44 @@ try {
   assert.equal((await snapshot()).sensitivity, 0.65); await swipe(620, 170, 40, 0); const low = (await snapshot()).aimOffset.x;
   assert.ok(high > low * 1.5); await page.locator('#sensitivity').click();
   assert.equal((await snapshot()).sensitivity, 1); results.push('Sensitivity setting changes actual swipe response');
+
+  await page.locator('#reset').click();
+  for(let i=0;i<4;i++) {
+    before=await snapshot(); const t=before.targets[6];
+    await page.mouse.move(t.screenX,t.screenY); await advance(i===0 ? 0.2 : 0.08);
+    after=await snapshot(); assert.equal(after.selectedTarget,6);
+    assert.equal(after.reticle.x,after.targets[6].x); assert.equal(after.reticle.z,after.targets[6].z);
+  }
+  await page.screenshot({path:'artifacts/moving-target-marker.png'});
+  await page.mouse.move(800,190); await advance(0.35);
+  assert.equal((await snapshot()).selectedTarget,null,'turning away releases the opponent');
+  results.push('Marker follows actual moving opponent position and releases on turning away; gun heading stays manual');
+
+  // Exercise installed native zoom guards; these event checks are not physical iOS proof.
+  const guardResult=await page.evaluate(async()=>{
+    const game=document.getElementById('game'), move=document.getElementById('move'), fire=document.getElementById('fire-right'), menu=document.getElementById('sensitivity');
+    const gesture={};
+    for(const type of ['gesturestart','gesturechange','gestureend']) { const e=new Event(type,{bubbles:true,cancelable:true});game.dispatchEvent(e);gesture[type]=e.defaultPrevented; }
+    const touch=(target,id)=>new Touch({identifier:id,target,clientX:target===move?85:750,clientY:300});
+    const native=(type,target,touches)=>{const e=new TouchEvent(type,{bubbles:true,cancelable:true,touches,changedTouches:[touch(target,9)]});target.dispatchEvent(e);return e.defaultPrevented;};
+    const pair=native('touchstart',fire,[touch(move,1),touch(fire,2)]);
+    const extra=native('touchmove',game,[touch(move,1),touch(fire,2),touch(game,3)]);
+    await new Promise(resolve=>setTimeout(resolve,360));
+    const first=native('touchend',game,[]), second=native('touchend',game,[]), menuTap=native('touchend',menu,[]);
+    return {gesture,pair,extra,first,second,menuTap,scale:visualViewport.scale,viewport:document.querySelector('meta[name=viewport]').content,touchAction:getComputedStyle(document.documentElement).touchAction};
+  });
+  assert.deepEqual(guardResult.gesture,{gesturestart:true,gesturechange:true,gestureend:true});
+  assert.equal(guardResult.pair,false,'two controls remain allowed'); assert.equal(guardResult.extra,true);
+  assert.equal(guardResult.first,false); assert.equal(guardResult.second,true); assert.equal(guardResult.menuTap,false);
+  assert.ok(guardResult.viewport.includes('user-scalable=no')); assert.equal(guardResult.touchAction,'none'); assert.equal(guardResult.scale,1);
+  await page.locator('#reset').click();
+  const tapFire=async()=>{await touch('touchStart',[[2,fire.x,fire.y]]);await touch('touchEnd',[]);await advance(0.08);};
+  await tapFire(); assert.equal((await snapshot()).shots,1); await advance(0.14);
+  await tapFire(); assert.equal((await snapshot()).shots,2); assert.equal((await snapshot()).fireCount,0);
+  await advance(0.14); await touch('touchStart',[[2,fire.x,fire.y]]); await touch('touchCancel',[]);
+  const cancelCount=(await snapshot()).shots; await advance(0.2); assert.equal((await snapshot()).shots,cancelCount,'cancelled contact never leaves a queued shot');
+  assert.equal(await page.evaluate(()=>visualViewport.scale),1);
+  results.push('Safari gesture events and game double tap are cancelled; valid two-thumb touches and menu taps allowed; repeated brief FIRE taps still shoot');
 
   const audioBefore = (await snapshot()).audio; assert.ok(audioBefore.ready && audioBefore.played > 0);
   await page.locator('#sound').click(); const mutedCount = (await snapshot()).audio.played;

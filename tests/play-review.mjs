@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const closeOnly = process.env.REVIEW_ONLY === 'close';
 const out = closeOnly ? 'artifacts/play-review-close' : 'artifacts/play-review';
 await mkdir(out + '/video', { recursive: true });
-const url = process.env.TEST_URL || 'https://degree-choice.com/?v=combat-8';
+const url = process.env.TEST_URL || 'https://degree-choice.com/?v=combat-9';
 const releaseMeta = await (await fetch(new URL('/release.json', url))).json();
 const integrity = [];
 for (const [name, expected] of Object.entries(releaseMeta.files_sha256)) {
@@ -28,7 +28,7 @@ const advance = async seconds => { const until = (await snapshot()).simTime + se
 const heading = s => Math.atan2(s.aimX, s.aimZ);
 const angleBetween = (a, b) => Math.abs(Math.atan2(Math.sin(heading(b) - heading(a)), Math.cos(heading(b) - heading(a)))) * 180 / Math.PI;
 function pixelsFor(s, x, z) { const units = 16 / 390, yaw = s.cameraYaw; return { x: (x * Math.cos(yaw) - z * Math.sin(yaw)) / units, y: (x * Math.sin(yaw) + z * Math.cos(yaw)) * s.verticalScale / units }; }
-function projectedReticle(s) { const p = pixelsFor(s, s.aimOffset.x, s.aimOffset.z); return { x: s.playerScreenX + p.x, y: s.playerScreenY + p.y - 0.25 * Math.sqrt(1 - s.verticalScale ** 2) / (16 / 390) }; }
+function projectedReticle(s) { const p = pixelsFor(s, s.reticle.x - s.x, s.reticle.z - s.z); return { x: s.playerScreenX + p.x, y: s.playerScreenY + p.y - 0.25 * Math.sqrt(1 - s.verticalScale ** 2) / (16 / 390) }; }
 async function send(type, points) {
   inputLog.push({ phase, type, points, wallSeconds: (performance.now() - wallStart) / 1000 });
   await cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([id, x, y]) => ({ id, x, y, radiusX: 6, radiusY: 6, force: 1 })) });
@@ -111,7 +111,7 @@ try {
   for(let i=0;i<20;i++){const s=await snapshot(),t=s.targets[6],p=aimTravel(s,t.x-s.x,t.z-s.z);previous.x+=p.x;previous.y+=p.y;await move(2,previous.x,previous.y);await advance(0.12);if(i===10)await checkpoint('moving-target');}
   await release();const trackingEnd=await snapshot();observations.push({case:'moving-target-tracking',shots:trackingEnd.shots-trackingStart.shots,hits:trackingEnd.hits-trackingStart.hits});
 
-  await reset();await setPhase('04 · Long swipes: does the aiming cursor stay visible?');await swipe(0,-210);await swipe(0,-150);
+  await reset();await setPhase('04 · Long swipes: does the aiming cursor stay visible?');await swipe(-45,-210);await swipe(0,-150);
   const edge=await checkpoint('offscreen-reticle'), reticle=projectedReticle(edge);observations.push({case:'reticle-visibility',reticle,visible:reticle.x>=0&&reticle.x<=844&&reticle.y>=0&&reticle.y<=390,aimOffset:edge.aimOffset});
   await down(2,fireCenter.x,fireCenter.y);await advance(0.5);await release();
 
@@ -128,7 +128,7 @@ try {
   observations.push({case:'point-blank',range:Math.hypot(closeStart.targets[0].x-closeStart.x,closeStart.targets[0].z-closeStart.z),shots:closeEnd.shots-closeStart.shots,hits:closeEnd.hits-closeStart.hits,targetHp:closeEnd.targets[0].hp,aimX:closeEnd.aimX,aimZ:closeEnd.aimZ});
   await advance(0.8);await setPhase('08 · Review complete — original live game unchanged');await advance(0.8);
   const touchStats=await page.evaluate(()=>window.reviewTouchStats);assert.ok(touchStats.max<=2);assert.deepEqual(errors,[]);
-  if (releaseMeta.release_id.startsWith('combat-8-')) {
+  if (releaseMeta.release_id.startsWith('combat-9-')) {
     for (const turn of observations.filter(o => o.case === 'turn')) assert.ok(Math.abs(turn.rotationDegrees - Math.abs(turn.inputDegrees)) < 3, 'full-circle touch turns');
     const close = observations.find(o => o.case === 'point-blank');
     assert.ok(close.range > 0.5 && close.range < 0.7 && close.hits >= 3, 'controlled close-range shots hit');

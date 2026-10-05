@@ -64,3 +64,9 @@ p { color: #b4c3c7; font-size: 14px; line-height: 1.65; }
 .fire.reloading #fire-label { font-size: 11px; letter-spacing: 0; }
 
 #aim-overlays { position: fixed; inset: 0; overflow: hidden; contain: strict; pointer-events: none; z-index: 2; }
+
+:root { touch-action: none; overscroll-behavior: none; -webkit-touch-callout: none; }
+body { -webkit-touch-callout: none; }
+input, select, textarea { font-size: 16px; }
+#target-marker { position: absolute; top: 0; left: 0; pointer-events: none; color: var(--mint); font-size: 20px; line-height: 1; text-shadow: 0 1px 5px #000; }
+#target-marker.hidden { display: none; }

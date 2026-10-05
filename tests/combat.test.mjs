@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stickVector, worldVector, turnAim, followAngle, aimAssist, rayCircle, WeaponState } from '../src/combat.js';
+import { stickVector, worldVector, turnAim, followAngle, aimAssist, targetOnRay, rayCircle, WeaponState } from '../src/combat.js';
 test('stick deadzone, analog response, and clamping', () => {
   assert.deepEqual(stickVector(1, 1, 50), { x: 0, y: 0 });
   assert.equal(stickVector(100, 0, 50).x, 1);
@@ -78,4 +78,13 @@ test('body turn eases without overshoot, is frame independent and crosses the an
   assert.ok(Math.abs(fast-slow)<1e-9 && Math.abs(fast-target)<1e-8);
   const seam = followAngle(179*Math.PI/180,-179*Math.PI/180,1/60);
   assert.ok(seam > 179*Math.PI/180 && seam < 181*Math.PI/180);
+});
+
+test('marker selects first live target on ray, ignores misses/behind/dead/beyond-wall opponents', () => {
+  const targets=[{x:0,z:-8,hp:100},{x:0,z:-4,hp:100},{x:3,z:-2,hp:100},{x:0,z:2,hp:100}];
+  assert.equal(targetOnRay(0,0,0,-1,targets),1);
+  assert.equal(targetOnRay(0,0,0,-1,targets,3),-1);
+  targets[1].hp=0; assert.equal(targetOnRay(0,0,0,-1,targets),0);
+  targets[0].hp=0; assert.equal(targetOnRay(0,0,0,-1,targets),-1);
+  targets[2].x=0; assert.equal(targetOnRay(0,0,0,-1,targets),2);
 });

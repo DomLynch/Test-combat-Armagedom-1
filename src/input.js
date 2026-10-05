@@ -1,6 +1,6 @@
-import { stickVector } from './combat.js?v=combat-8';
+import { stickVector } from './combat.js?v=combat-9';
 export function createInput(canvas, onReload, onSwap) {
-  const state = { move: { x: 0, y: 0 }, lookDelta: { x: 0, y: 0 }, looking: false, touchAim: false, keys: new Set(), fires: new Set(), focus: false, pointerAim: null };
+  const state = { move: { x: 0, y: 0 }, lookDelta: { x: 0, y: 0 }, looking: false, touchAim: false, keys: new Set(), fires: new Set(), firePressed: false, focus: false, pointerAim: null };
   const element = document.getElementById('move'), knob = element.querySelector('.knob');
   let moveId = null, look = null;
   function updateMove(e) {
@@ -23,6 +23,7 @@ export function createInput(canvas, onReload, onSwap) {
   // finger travel, so lifting/replanting the thumb never snaps the gun around.
   function releaseLook(e) {
     if (!look || (e && e.pointerId !== look.id)) return;
+    if (e && e.type !== 'pointerup') state.firePressed = false;
     const previous = look; look = null; state.looking = false;
     state.fires.delete('touch-fire'); previous.element.classList.remove('held');
     if (previous.element.hasPointerCapture(previous.id)) previous.element.releasePointerCapture(previous.id);
@@ -33,7 +34,7 @@ export function createInput(canvas, onReload, onSwap) {
       e.preventDefault(); if (look) return;
       look = { id: e.pointerId, element: surface, x: e.clientX, y: e.clientY };
       state.looking = true; state.touchAim = true; state.pointerAim = null; surface.setPointerCapture(e.pointerId);
-      if (firing) { state.fires.add('touch-fire'); surface.classList.add('held'); }
+      if (firing) { state.firePressed = true; state.fires.add('touch-fire'); surface.classList.add('held'); }
     });
     surface.addEventListener('pointermove', e => {
       if (!look || look.id !== e.pointerId || look.element !== surface) return;
@@ -44,18 +45,18 @@ export function createInput(canvas, onReload, onSwap) {
   }
   bindLook(canvas, false); bindLook(document.getElementById('fire-right'), true);
   canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && !look) { state.touchAim = false; state.pointerAim = { x: e.clientX, y: e.clientY }; } });
-  canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; canvas.setPointerCapture(e.pointerId); if (e.button === 0) state.fires.add('mouse'); if (e.button === 2) state.focus = true; });
-  const releaseMouse = e => { if (e.pointerType !== 'mouse') return; state.fires.delete('mouse'); state.focus = false; };
+  canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; canvas.setPointerCapture(e.pointerId); if (e.button === 0) { state.firePressed = true; state.fires.add('mouse'); } if (e.button === 2) state.focus = true; });
+  const releaseMouse = e => { if (e.pointerType !== 'mouse') return; if (e.type !== 'pointerup' && state.fires.has('mouse')) state.firePressed = false; state.fires.delete('mouse'); state.focus = false; };
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(event, releaseMouse);
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   document.addEventListener('keydown', e => {
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     state.keys.add(e.code); if (e.repeat) return;
     if (e.code === 'KeyR') onReload(); if (e.code === 'KeyQ') onSwap();
-    if (e.code === 'Space') state.fires.add('keyboard');
+    if (e.code === 'Space') { state.firePressed = true; state.fires.add('keyboard'); }
   });
   document.addEventListener('keyup', e => { state.keys.delete(e.code); if (e.code === 'Space') state.fires.delete('keyboard'); });
-  state.clear = () => { releaseMove(); releaseLook(); state.lookDelta.x = state.lookDelta.y = 0; state.keys.clear(); state.fires.clear(); state.focus = false; state.pointerAim = null; };
+  state.clear = () => { releaseMove(); releaseLook(); state.lookDelta.x = state.lookDelta.y = 0; state.keys.clear(); state.fires.clear(); state.firePressed = false; state.focus = false; state.pointerAim = null; };
   window.addEventListener('blur', state.clear);
   document.addEventListener('visibilitychange', () => { if (document.hidden) state.clear(); });
   window.addEventListener('resize', state.clear);
