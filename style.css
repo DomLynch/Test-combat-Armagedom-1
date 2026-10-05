@@ -49,3 +49,14 @@ p { color: #b4c3c7; font-size: 14px; line-height: 1.65; }
   #look-hint { right: max(24px, env(safe-area-inset-right)); }
   .options { top: 109px; } #feedback { top: 27%; }
 }
+
+#aim-edge, #hit-marker { position: absolute; top: 0; left: 0; pointer-events: none; color: var(--mint); z-index: 2; text-shadow: 0 1px 4px #000; }
+#aim-edge { font-size: 22px; border: 1px solid #a9f9d099; background: #14211ce0; border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; }
+#aim-edge.hidden { display: none; }
+#hit-marker { font-size: 34px; font-weight: 900; line-height: 1; opacity: 0; }
+#hit-marker.kill { color: #ffd29c; }
+.reload-ring { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); transform: rotate(-90deg); pointer-events: none; opacity: 0; }
+.reload-ring circle { fill: none; stroke: var(--mint); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; }
+.fire.reloading .reload-ring { opacity: 1; }
+.fire.reloading { border-color: #718187; }
+.fire.reloading #fire-label { font-size: 11px; letter-spacing: 0; }

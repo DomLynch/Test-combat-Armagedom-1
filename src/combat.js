@@ -20,6 +20,16 @@ export function lookTravel(dx, dy, unitsPerPixel, verticalScale, yaw) {
   const right = dx * unitsPerPixel, down = dy * unitsPerPixel / verticalScale;
   return { x: right * Math.cos(yaw) + down * Math.sin(yaw), z: -right * Math.sin(yaw) + down * Math.cos(yaw) };
 }
+// Keep the cursor clear of the player, where tiny swipes otherwise reverse aim.
+export function swipeAim(x, z, dx, dz, sensitivity = 1, minimum = 3, maximum = 14) {
+  const initial = Math.hypot(x, z);
+  if (initial < minimum) { const scale = minimum / Math.max(initial, 1e-9); x *= scale; z *= scale; if (!initial) z = -minimum; }
+  const nextX = x + dx * sensitivity, nextZ = z + dz * sensitivity;
+  const length = Math.hypot(nextX, nextZ);
+  if (length < 1e-6) return { x, z };
+  const radius = Math.max(minimum, Math.min(maximum, length));
+  return { x: nextX / length * radius, z: nextZ / length * radius };
+}
 // Analytic hitscan against a target circle, returning the entry distance.
 export function rayCircle(ox, oz, dx, dz, cx, cz, radius) {
   const x = cx - ox, z = cz - oz;

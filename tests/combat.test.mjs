@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stickVector, worldVector, lookTravel, rayCircle, WeaponState } from '../src/combat.js';
+import { stickVector, worldVector, lookTravel, swipeAim, rayCircle, WeaponState } from '../src/combat.js';
 test('stick deadzone, analog response, and clamping', () => {
   assert.deepEqual(stickVector(1, 1, 50), { x: 0, y: 0 });
   assert.equal(stickVector(100, 0, 50).x, 1);
@@ -45,4 +45,14 @@ test('look travel preserves pixel distance, screen direction, and accumulated sw
     const half = lookTravel(dx / 2, dy / 2, scale, vertical, yaw);
     assert.ok(Math.abs(half.x * 2 - v.x) < 1e-9 && Math.abs(half.z * 2 - v.z) < 1e-9);
   }
+});
+
+test('near-player swipes retain a safe radius and do not flip from a tiny gesture', () => {
+  const near = swipeAim(0, -0.35, 0, 0.7);
+  assert.ok(near.z < 0 && Math.hypot(near.x, near.z) >= 3);
+  assert.deepEqual(swipeAim(0, -3, 0, 3), { x: 0, z: -3 });
+  const far = swipeAim(0, -5, 100, -100);
+  assert.ok(Math.abs(Math.hypot(far.x, far.z) - 14) < 1e-9);
+  const low = swipeAim(0, -5, 1, 0, 0.65), high = swipeAim(0, -5, 1, 0, 1.35);
+  assert.ok(high.x > low.x);
 });

@@ -1,4 +1,4 @@
-import { stickVector } from './combat.js?v=thumb-4';
+import { stickVector } from './combat.js?v=combat-5';
 export function createInput(canvas, onReload, onSwap) {
   const state = { move: { x: 0, y: 0 }, lookDelta: { x: 0, y: 0 }, looking: false, keys: new Set(), fires: new Set(), focus: false, pointerAim: null };
   const element = document.getElementById('move'), knob = element.querySelector('.knob');

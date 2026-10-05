@@ -31,13 +31,16 @@ try {
   const target = before.targets[0];
   await page.mouse.move(target.screenX, target.screenY);
   await page.keyboard.down('Space');
-  await advance(0.52); await page.keyboard.up('Space');
+  await advance(0.08); assert.equal((await snapshot()).hitMarker, true); assert.equal(await page.locator('#hit-marker').evaluate(el => el.style.opacity), '1');
+  await advance(0.44); await page.keyboard.up('Space');
   let after = await snapshot(); assert.ok(after.shots >= 3); assert.ok(after.hits >= 3); results.push('Mouse aim and held fire hit real targets');
   await page.locator('#swap').click(); await advance(0.25);
   assert.equal((await snapshot()).weapon, 'PISTOL');
   await page.keyboard.down('Space'); await advance(0.08); await page.keyboard.up('Space');
   assert.equal((await snapshot()).ammo, 11);
   await page.locator('#reload').click(); assert.ok((await snapshot()).reloading > 0);
+  await advance(0.1); assert.equal(await page.locator('#fire-label').textContent(), 'RELOAD');
+  assert.ok(Number(await page.locator('#reload-ring').evaluate(el => el.style.strokeDashoffset)) < 100);
   await advance(1.05);
   assert.equal((await snapshot()).reloading, 0); assert.equal((await snapshot()).ammo, 12); results.push('Weapon switching and actual magazine reload through UI');
   await page.locator('#reset').click();
@@ -108,9 +111,55 @@ try {
   await touch('touchCancel', []);
   await page.setViewportSize({ width: 844, height: 390 }); await advance(0.05);
   results.push('Orientation/viewport change clears held controls');
+  await page.locator('#reset').click();
+  await swipe(620, 170, 0, -210); await swipe(620, 170, 0, -150);
+  assert.equal((await snapshot()).aimEdge, true);
+  const edge = await page.locator('#aim-edge').boundingBox();
+  assert.ok(edge.x >= 0 && edge.y >= 0 && edge.x + edge.width <= 844 && edge.y + edge.height <= 390);
+  await page.screenshot({ path: 'artifacts/edge-indicator.png' });
+  results.push('Off-screen aim keeps a visible, bounded edge indicator');
+
+  await page.locator('#reset').click(); before = await snapshot();
+  let p = { x: -4.65 * Math.sin(before.cameraYaw) * 390 / 16, y: 4.65 * Math.cos(before.cameraYaw) * before.verticalScale * 390 / 16 };
+  await swipe(620, 170, p.x, p.y); before = await snapshot();
+  assert.ok(Math.hypot(before.aimOffset.x, before.aimOffset.z) >= 2.999);
+  p = { x: -0.7 * Math.sin(before.cameraYaw) * 390 / 16, y: 0.7 * Math.cos(before.cameraYaw) * before.verticalScale * 390 / 16 };
+  await swipe(620, 170, p.x, p.y); after = await snapshot();
+  assert.ok(after.aimZ < -0.95 && Math.abs(after.aimX) < 0.1, 'original 14px flip is prevented');
+  results.push('Original near-player small swipe no longer reverses gun aim');
+
+  await page.locator('#reset').click(); await page.locator('#sensitivity').click();
+  assert.equal((await snapshot()).sensitivity, 1.35); await swipe(620, 170, 40, 0); const high = (await snapshot()).aimOffset.x;
+  await page.locator('#sensitivity').click(); await page.locator('#reset').click();
+  assert.equal((await snapshot()).sensitivity, 0.65); await swipe(620, 170, 40, 0); const low = (await snapshot()).aimOffset.x;
+  assert.ok(high > low * 1.5); await page.locator('#sensitivity').click();
+  assert.equal((await snapshot()).sensitivity, 1); results.push('Sensitivity setting changes actual swipe response');
+
+  const audioBefore = (await snapshot()).audio; assert.ok(audioBefore.ready && audioBefore.played > 0);
+  await page.locator('#sound').click(); const mutedCount = (await snapshot()).audio.played;
+  await page.keyboard.down('Space'); await advance(0.2); await page.keyboard.up('Space');
+  assert.equal((await snapshot()).audio.played, mutedCount);
+  await page.locator('#sound').click(); await page.keyboard.down('Space'); await advance(0.2); await page.keyboard.up('Space');
+  assert.ok((await snapshot()).audio.played > mutedCount); results.push('Gesture-unlocked audio schedules actual cues and mute suppresses them');
+
+  await page.locator('#reset').click(); await touch('touchStart', [[1, move.x, move.y]]);
+  const deadline = (await snapshot()).simTime + 14;
+  for (let i = 0; i < 140; i++) {
+    const s = await snapshot(), dx = -s.x, dz = -7.4 - s.z, distance = Math.hypot(dx, dz);
+    if (distance < 0.03 || s.simTime > deadline) break;
+    const sx = dx * Math.cos(s.cameraYaw) - dz * Math.sin(s.cameraYaw), sy = (dx * Math.sin(s.cameraYaw) + dz * Math.cos(s.cameraYaw)) * s.verticalScale;
+    const length = Math.hypot(sx, sy), radius = 118 * 0.37 * (0.13 + 0.87 * Math.min(0.45, distance / 4));
+    await touch('touchMove', [[1, move.x + sx / length * radius, move.y + sy / length * radius]]); await advance(0.075);
+  }
+  await touch('touchEnd', []); await advance(0.08); before = await snapshot();
+  const range = Math.hypot(before.x, before.z + 8); assert.ok(range > 0.5 && range < 0.7, 'controlled point-blank position: ' + range);
+  await touch('touchStart', [[2, fire.x, fire.y]]); await advance(0.4); await touch('touchEnd', []); after = await snapshot();
+  assert.ok(after.hits >= 3 && after.targets[0].hp <= 25, 'actual close-range shots damage the dummy');
+  await page.screenshot({ path: 'artifacts/point-blank-fixed.png' });
+  results.push('Original ~0.62-unit point-blank reproduction now hits and damages target');
   await page.screenshot({ path: 'artifacts/landscape.png' });
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
-  for (const id of ['#move', '#fire-right', '#reload', '#swap']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
+  for (const id of ['#move', '#fire-right', '#reload', '#swap', '#sound', '#sensitivity']) { const b = await page.locator(id).boundingBox(); assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.width <= 391 && b.y + b.height <= 845, id + ' within portrait viewport'); }
   await page.screenshot({ path: 'artifacts/portrait.png' });
   assert.deepEqual(errors, []); results.push('Landscape/portrait UI fits; no runtime or console errors');
   await writeFile('artifacts/browser-result.json', JSON.stringify({ pass: true, results, snapshot: await snapshot() }, null, 2));

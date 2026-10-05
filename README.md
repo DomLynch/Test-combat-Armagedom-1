@@ -4,12 +4,14 @@ Simple Three.js mobile-web combat prototype. Lit 3D isometric range with a close
 
 ## Play
 
-**[Open the mobile demo](https://degree-choice.com/?v=thumb-4)**
+**[Open the mobile demo](https://degree-choice.com/?v=combat-5)**
 
 Opens straight into the range with a viewport-filling canvas and no start popup or iframe. Full screen is available through the button where the browser supports it; the web manifest supports opening from the home screen in standalone mode.
 
 - Left stick moves. Swipe anywhere on the free right half to move the aiming reticle; the gun faces it. Lift and replant without an aim jump.
 - Hold the right **FIRE** button to shoot. Drag the same thumb while holding to adjust aim, including outside the button. Left thumb can keep moving throughout: only two fingers needed.
+- Aim sensitivity cycles Low/Normal/High. The swipe cursor stays at least three arena units from the player to avoid abrupt reversals near the body.
+- Off-screen aiming has a visible edge arrow. Hits flash a marker at the reticle; reload shows progress around FIRE. Short procedural shot/impact sounds unlock on first interaction; Sound toggles mute.
 - Swipe-to-aim alone never fires. The isometric camera keeps its fixed angle and follows the player.
 - RIFLE/PISTOL switches weapon; RELOAD refills with unlimited reserve.
 - Desktop: WASD/arrows, mouse aim, left mouse/Space fire, right mouse focus, R reload, Q switch.
@@ -32,7 +34,7 @@ ARMAGEDOM was inspected read-only for angled-camera and lit-actor visual inspira
 
 ## Verification
 
-`npm test` checks deadzone, normalized motion, hitscan, firing cadence, magazines/reload and swap. `npm run test:browser` performs real Chromium mouse and simultaneous multi-touch checks; run on the VPS through the workspace runner. Browser screenshots land in ignored `artifacts/`. Physical iPhone/Safari feel requires device play.
+`npm test` checks deadzone, normalized motion, hitscan, safe swipe radius/sensitivity, firing cadence, magazines/reload and swap. `npm run test:browser` performs real Chromium mouse and simultaneous multi-touch checks; run on the VPS through the workspace runner. Browser screenshots land in ignored `artifacts/`. Physical iPhone/Safari feel requires device play.
 
 On the workspace VPS, use `CHROMIUM_PATH=/opt/frankendom-shadow/ms-playwright/chromium-1234/chrome-linux64/chrome npm run test:browser` to reuse the installed browser. Else install the pinned Playwright browser with `npx playwright install chromium`.
 
